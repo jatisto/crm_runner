@@ -3,7 +3,7 @@ import os
 import subprocess
 import threading
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 import psutil
 
@@ -17,7 +17,14 @@ pid_proc = None
 pid_sub_proc = None
 global dotnet_process_pid
 pids = []
+# selected_pids = []
+# checkboxes = []
+# var_boxes = []
 stop_signal = threading.Event()
+
+root = tk.Tk()
+root.geometry("800x300+0+0")
+root.title("CRM Starter")
 
 
 def load_settings():
@@ -102,7 +109,7 @@ def run_command():
 
                         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                                                    startupinfo=startupinfo)
-                        pids.Append(process.pid)
+                        pids.append((process.pid, folder_path))
                         # Остальной код остается без изменений
                         Log.info(f"Процесс запущен {process.pid}", "run_process")
                         pid_proc_label.config(text=f"Pid: {process.pid}")
@@ -122,35 +129,67 @@ def run_command():
         os.chdir(current_directory)
 
 
+@basis_handle_errors(text='on_ok')
+def on_ok(window, boxes):
+    selected_pids = [pid for pid, var_box in boxes if var_box.get() == 1]
+
+    for pid_proc_run in selected_pids:
+        child_process = psutil.Process(pid_proc_run)
+        child_process.terminate()
+
+    global pids
+    pids = [(pid, folder_path) for pid, folder_path in pids if pid not in selected_pids]
+
+    result_label.config(text=f"Завершены дочерние процессы с PID: {selected_pids}")
+    message_label.config(text="")
+    console_output_text.insert(tk.END, f"Завершены дочерние процессы с PID: {selected_pids}")
+    window.destroy()
+
+
 @basis_handle_errors(text='stop_command')
 def stop_command():
-    global process
-    if process:
-        parent_process_id = process.pid
-        child_process = psutil.Process(parent_process_id)
-        child_process.terminate()
-        result_label.config(text=f"Завершен дочерний процесс с PID {parent_process_id}")
-        console_output_text.insert(tk.END, f"Завершен дочерний процесс с PID {parent_process_id}")
-        # # Получите список всех процессов, включая дочерние
-        # all_processes = list(psutil.process_iter(attrs=['pid', 'name', 'ppid']))
-        #
-        # # Завершите дочерние процессы
-        # for child_process_info in all_processes:
-        #     try:
-        #         if child_process_info.info['ppid'] == parent_process_id:
-        #             child_process_id = child_process_info.info['pid']
-        #             child_process = psutil.Process(child_process_id)
-        #             child_process.terminate()
-        #             print(f"Завершен дочерний процесс с PID {child_process_id}")
-        #     except (psutil.NoSuchProcess, psutil.AccessDenied):
-        #         pass
-        #
-        # # Завершите родительский процесс
-        # try:
-        #     process.terminate()
-        #     print(f"Завершен родительский процесс с PID {parent_process_id}")
-        # except psutil.NoSuchProcess:
-        #     pass
+    # Проверка, есть ли активные процессы
+    if not pids:
+        messagebox.showinfo("Нет активных процессов", "Нет запущенных процессов для завершения.")
+        return
+
+    window = tk.Toplevel(root)
+    window.title("Выберите процессы для завершения")
+    window.minsize(600, 100)
+    window.maxsize(600, 100)
+    window_width_window = 600
+    window_height_window = 100
+
+    parent_x = root.winfo_x()
+    parent_y = root.winfo_y()
+    parent_width = root.winfo_width()
+    parent_height = root.winfo_height()
+
+    x = parent_x + (parent_width - window_width_window) // 2
+    y = parent_y + (parent_height - window_height_window) // 2
+
+    window.geometry(f"{window_width_window}x{window_height_window}+{x}+{y}")
+    var_boxes = []
+    for pid, folder_path in pids:
+        var_box = tk.IntVar()
+        checkbox = tk.Checkbutton(window, text=f"PID: {pid}, Путь: {folder_path}", variable=var_box)
+        checkbox.pack()
+        var_boxes.append((pid, var_box))
+
+    window.update_idletasks()
+
+    ok_button = tk.Button(window, text="OK", command=lambda: on_ok(window, var_boxes))
+    ok_button.pack()
+
+    window.mainloop()
+
+
+# Добавьте эту функцию для выполнения других действий с выбранными PID
+def do_something_with_selected_pids(selected_pids):
+    if selected_pids:
+        print("Выполняю действия с выбранными PID:", selected_pids)
+    else:
+        print("Нет выбранных PID")
 
 
 def get_process_info_by_pid(pid):
@@ -163,10 +202,6 @@ def get_process_info_by_pid(pid):
     except psutil.NoSuchProcess as e:
         print(f"Процесс с PID {pid} не найден.")
 
-
-root = tk.Tk()
-root.geometry("800x300+0+0")
-root.title("CRM Starter")
 
 root.minsize(800, 300)
 root.maxsize(800, 300)

@@ -179,10 +179,10 @@ class CRMStarterApp:
         try:
             with open('settings.json', 'w') as settings_file:
                 json.dump(self.existing_settings, settings_file, indent=4)
-            self.message_label.insert(tk.END, "Настройки успешно сохранены.")
+            messagebox.showinfo("Информация", "Настройки успешно сохранены.")
         except Exception as ex:
             self.message_label.insert(tk.END, f"Произошла ошибка при сохранении настроек: {ex}")
-        finally:
+        else:
             self.update_combobox()
 
     def is_exist_setting(self, path):
@@ -436,6 +436,12 @@ class CRMStarterApp:
 
         window.mainloop()
 
+    def on_entry_focus_in_message(self, event):
+        self.button_change.place_forget()
+        self.button_delete.place(width=120, height=25, x=648, y=300)
+        global path_delete
+        path_delete = None
+
     def on_entry_focus_in(self, event):
         self.button_delete.place_forget()
         self.button_change.place(width=120, height=25, x=648, y=300)
@@ -500,6 +506,8 @@ class CRMStarterApp:
 
         self.message_label = tk.Text(frame1, font=("Segoe UI", 10, "italic"), width=44, height=7)
         self.message_label.place(x=450, y=120)
+
+        self.message_label.bind("<FocusIn>", self.on_entry_focus_in_message)
 
         self.style.configure("Message.TLabel", foreground="green")  # Задайте нужный цвет, например, "green"
 
@@ -584,7 +592,7 @@ class CRMStarterApp:
         self.dll_frame_2.place(width=290, height=25, x=230, y=250)
 
         button2 = ttk.Button(frame2, text="Сохранить", command=self.save_settings)
-        button2.place(width=100, height=25, x=660, y=215)
+        button2.place(width=120, height=25, x=648, y=300)
 
         label1 = ttk.Label(frame2, text="Aлиас:", anchor="e", font="{Segoe UI} 10 {italic}")
         label1.place(width=120, height=25, x=95, y=10)

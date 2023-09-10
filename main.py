@@ -17,9 +17,6 @@ pid_proc = None
 pid_sub_proc = None
 global dotnet_process_pid
 pids = []
-# selected_pids = []
-# checkboxes = []
-# var_boxes = []
 stop_signal = threading.Event()
 
 root = tk.Tk()
@@ -90,19 +87,23 @@ def run_command():
                 if dll_path:
                     folder_path = selected_app['folder']
 
-                    # Перейти в выбранную папку
+                    new_frame = ttk.Frame(notebook)
+                    notebook.add(new_frame, text=f"{folder_path}")
+
                     os.chdir(folder_path)
 
-                    # Очистить текстовое поле вывода
-                    console_output_text.delete(1.0, tk.END)
-                    current_directory_label.config(text=f"Текущая папка: {selected_folder}")
-                    command_label.config(text=f"Команда: dotnet {dll_path}")
+                    console_output_text = tk.Text(new_frame, wrap=tk.WORD)
+                    console_output_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+                    scrollbar = ttk.Scrollbar(new_frame, orient=tk.VERTICAL, command=console_output_text.yview)
+                    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+                    console_output_text.config(yscrollcommand=scrollbar.set)
 
                     startupinfo = subprocess.STARTUPINFO()
                     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
                     @basis_handle_errors(text='run_command')
-                    # Запустить процесс в отдельном потоке
                     def run_process():
                         global process, pids
                         command = f"dotnet {dll_path}"
@@ -110,14 +111,16 @@ def run_command():
                         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                                                    startupinfo=startupinfo)
                         pids.append((process.pid, folder_path))
-                        # Остальной код остается без изменений
-                        Log.info(f"Процесс запущен {process.pid}", "run_process")
-                        pid_proc_label.config(text=f"Pid: {process.pid}")
+
+                        global stop_signal
                         while True:
                             output_line = process.stdout.readline()
                             if not output_line:
                                 break
                             console_output_text.insert(tk.END, output_line)
+
+                            canvas.update_idletasks()
+                            canvas.configure(scrollregion=canvas.bbox("all"))
 
                     process_thread_run = threading.Thread(target=run_process)
                     process_thread_run.start()
@@ -130,20 +133,39 @@ def run_command():
 
 @basis_handle_errors(text='on_ok')
 def on_ok(window, boxes):
-    selected_pids = [pid for pid, var_box in boxes if var_box.get() == 1]
+    selected_pids = [pid for pid, var_box, folder_path in boxes if var_box.get() == 1]
 
-    for pid_proc_run in selected_pids:
+    for pid_proc_run, _, folder_path in [(pid, var_box, folder_path) for pid, var_box, folder_path in boxes if
+                                         var_box.get() == 1]:
         child_process = psutil.Process(pid_proc_run)
         child_process.terminate()
+        close_tab_by_name(folder_path)
 
     global pids
     pids = [(pid, folder_path) for pid, folder_path in pids if pid not in selected_pids]
 
     result_label.config(text=f"Завершены процессы с PID: {selected_pids}")
     message_label.config(text="")
-    console_output_text.insert(tk.END, f"")
-    console_output_text.insert(tk.END, f"Завершены процессы с PID: {selected_pids}")
     window.destroy()
+
+
+def close_tab_by_name(tab_path):
+    try:
+        fixed_tab_path = tab_path
+        Log.info(f"Закрываем вкладку: {fixed_tab_path}", "close_tab_by_name")
+
+        index = None
+        tab_names = [notebook.tab(i, "text") for i in range(notebook.index("end"))]
+        for i, name in enumerate(tab_names):
+            if name == fixed_tab_path:
+                index = i
+                break
+
+        if index is not None:
+            notebook.forget(index)
+    except Exception as ex:
+        Log.info(f"Ошибка при закрытии вкладки: {ex}", "Exception")
+        pass  # Обработка ошибки, если вкладка не найдена
 
 
 @basis_handle_errors(text='stop_command')
@@ -155,10 +177,11 @@ def stop_command():
 
     window = tk.Toplevel(root)
     window.title("Выберите процессы для завершения")
-    window.minsize(600, 100)
-    window.maxsize(600, 100)
+
+    window.minsize(600, 400)
+    window.maxsize(600, 400)
     window_width_window = 600
-    window_height_window = 100
+    window_height_window = 400
 
     parent_x = root.winfo_x()
     parent_y = root.winfo_y()
@@ -174,7 +197,7 @@ def stop_command():
         var_box = tk.IntVar()
         checkbox = tk.Checkbutton(window, text=f"PID: {pid}, Путь: {folder_path}", variable=var_box)
         checkbox.pack()
-        var_boxes.append((pid, var_box))
+        var_boxes.append((pid, var_box, folder_path))
 
     window.update_idletasks()
 
@@ -203,18 +226,30 @@ def get_process_info_by_pid(pid):
         print(f"Процесс с PID {pid} не найден.")
 
 
-root.minsize(800, 300)
-root.maxsize(800, 300)
+root.minsize(800, 350)
+root.maxsize(800, 350)
 window_width = 800
-window_height = 300
+window_height = 350
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
 x_position = (screen_width - window_width) // 2
 y_position = (screen_height - window_height) // 2
 root.geometry(f"{window_width}x{window_height}+{x_position}+{y_position}")
 
-notebook = ttk.Notebook(root, width=780, height=255)
+canvas = tk.Canvas(root, width=780, height=300)
+canvas.place(x=10, y=10)
+
+canvas_scrollbar = ttk.Scrollbar(root, orient="horizontal", command=canvas.xview)
+canvas_scrollbar.place(x=10, y=300, width=780)
+
+canvas.configure(xscrollcommand=canvas_scrollbar.set)
+
+notebook = ttk.Notebook(canvas, width=780, height=275)
 notebook.place(x=10, y=10)
+
+canvas.create_window((0, 0), window=notebook, anchor='nw')
+canvas.update_idletasks()
+canvas.configure(scrollregion=canvas.bbox("all"))
 
 frame1 = ttk.Frame(notebook)
 notebook.add(frame1, text="Crm run")
@@ -229,20 +264,11 @@ button1.place(width=100, height=25, x=665, y=45)
 button_stop = ttk.Button(frame1, text="Stop Command", command=stop_command)
 button_stop.place(width=100, height=25, x=555, y=45)
 
-current_directory_label = ttk.Label(frame1, text="", font=("Segoe UI", 10, "italic"))
-current_directory_label.place(x=350, y=90)
-
-command_label = ttk.Label(frame1, text="", font=("Segoe UI", 10, "italic"))
-command_label.place(x=350, y=120)
-
-pid_proc_label = ttk.Label(frame1, text="", font=("Segoe UI", 10, "italic"))
-pid_proc_label.place(x=350, y=140)
-
 result_label = ttk.Label(frame1, text="", font=("Segoe UI", 10, "italic"))
-result_label.place(x=350, y=160)
+result_label.place(x=350, y=90)
 
 message_label = ttk.Label(frame1, text="", font=("Segoe UI", 10, "italic"))
-message_label.place(x=350, y=180)
+message_label.place(x=350, y=120)
 
 entry1 = ttk.Entry(frame1)
 entry1.place(width=290, height=25, x=10, y=50)
@@ -300,23 +326,6 @@ entry11.place(width=290, height=25, x=230, y=210)
 
 label6 = ttk.Label(frame2, text="dll:", anchor="e", font="{Segoe UI} 10 {italic}")
 label6.place(width=120, height=25, x=90, y=210)
-
-# TODO Нужно добавить динамическое создание Notebook-в console log по одному на запущенный процесс и добавлять наименование и процесс
-frame3 = ttk.Frame(notebook)
-notebook.add(frame3, text="console log")
-
-horizontal_paned_window = ttk.PanedWindow(frame3, orient=tk.HORIZONTAL)
-horizontal_paned_window.place(width=765, height=245, x=5, y=5)
-
-console_output_text = tk.Text(frame3, wrap=tk.WORD)  # Установите высоту, которая вам нужна
-console_output_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-scrollbar = ttk.Scrollbar(frame3, orient=tk.VERTICAL, command=console_output_text.yview)
-scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-
-console_output_text.config(yscrollcommand=scrollbar.set)
-
 
 load_settings()
 root.mainloop()

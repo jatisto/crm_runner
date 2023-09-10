@@ -12,11 +12,16 @@ from utility_function import basis_handle_errors, Log
 
 process = None
 pids = []
+path_delete = None
 
 
 @basis_handle_errors("CRMStarterApp")
 class CRMStarterApp:
     def __init__(self, root):
+        self.button_stop = None
+        self.button_start = None
+        self.button_delete = None
+        self.button_change = None
         self.path_frame_1 = None
         self.alias_frame_1 = None
         self.alias_frame_2 = None
@@ -64,6 +69,67 @@ class CRMStarterApp:
         except Exception as e:
             print(f"Произошла ошибка при загрузке настроек: {e}")
 
+    @basis_handle_errors("change_data")
+    def change_settings(self):
+        alias_value = self.alias_frame_1.get()
+        path_value = self.path_frame_1.get()
+        bd_value = self.bd_frame_1.get()
+        app_port_value = int(self.app_port_frame_1.get())
+        redis_port_value = int(self.redis_port_frame_1.get())
+        pg_port_value = int(self.pg_port_frame_1.get())
+        dll_value = self.dll_frame_1.get()
+
+        try:
+            with open('settings.json', 'r') as settings_file:
+                existing_settings = json.load(settings_file)
+        except FileNotFoundError:
+            existing_settings = {"applications": []}
+        except Exception as ex:
+            self.message_label.delete('1.0', tk.END)
+            self.message_label.insert(tk.END, f"Произошла ошибка при загрузке настроек: {ex}")
+            return
+
+        # Проверьте, существует ли настройка с таким же 'folder'
+        existing_app = next(
+            (app for app in existing_settings.get('applications', []) if app.get('folder') == path_value),
+            None)
+
+        if existing_app:
+            # Если настройка существует, обновите ее значения
+            existing_app.update({
+                "alias": alias_value,
+                "folder": path_value,
+                "port": app_port_value,
+                "db": bd_value,
+                "redis": redis_port_value,
+                "postgresql_port": pg_port_value,
+                "dll": dll_value,
+            })
+        else:
+            # Если настройка не существует, добавьте новую настройку в список
+            existing_settings['applications'].append({
+                "alias": alias_value,
+                "folder": path_value,
+                "port": app_port_value,
+                "db": bd_value,
+                "redis": redis_port_value,
+                "postgresql_port": pg_port_value,
+                "dll": dll_value,
+            })
+
+        # Сохраните обновленные настройки в файл
+        try:
+            with open('settings.json', 'w') as settings_file:
+                json.dump(existing_settings, settings_file, indent=4)
+            self.message_label.delete('1.0', tk.END)
+            self.message_label.insert(tk.END, "Настройки успешно сохранены.")
+        except Exception as ex:
+            self.message_label.delete('1.0', tk.END)
+            self.message_label.insert(tk.END, f"Произошла ошибка при сохранении настроек: {ex}")
+        else:
+            self.button_change.place_forget()
+            self.update_combobox()
+
     @basis_handle_errors("save_settings")
     def save_settings(self):
         alias = self.alias_frame_2.get()
@@ -80,7 +146,7 @@ class CRMStarterApp:
         except FileNotFoundError:
             self.existing_settings = {"applications": []}
         except Exception as ex:
-            self.message_label.config(text=f"Произошла ошибка при загрузке настроек: {ex}")
+            self.message_label.insert(tk.END, f"Произошла ошибка при загрузке настроек: {ex}")
             return
 
         # Проверьте, существует ли настройка с таким же 'folder'
@@ -113,9 +179,9 @@ class CRMStarterApp:
         try:
             with open('settings.json', 'w') as settings_file:
                 json.dump(self.existing_settings, settings_file, indent=4)
-            self.message_label.config(text="Настройки успешно сохранены.")
+            self.message_label.insert(tk.END, "Настройки успешно сохранены.")
         except Exception as ex:
-            self.message_label.config(text=f"Произошла ошибка при сохранении настроек: {ex}")
+            self.message_label.insert(tk.END, f"Произошла ошибка при сохранении настроек: {ex}")
         finally:
             self.update_combobox()
 
@@ -124,16 +190,9 @@ class CRMStarterApp:
             (app for app in self.existing_settings.get('applications', []) if app.get('folder') == path),
             None)
 
-    def delete_settings(self):
+    def delete_settings(self, delete_path=None):
         path_to_delete = None
-        selected_folder = self.combobox1.get()
-        if selected_folder:
-            selected_app = next((app for app in self.applications if app['folder'] == selected_folder), None)
-            if selected_app:
-                dll_path = selected_app.get('dll', '')
-                if dll_path:
-                    folder_path = selected_app['folder']
-                    path_to_delete = folder_path
+        path_to_delete = delete_path if delete_path else self.get_folder_path_and_dll(path_to_delete)
 
         self.existing_settings = {}
         try:
@@ -142,7 +201,8 @@ class CRMStarterApp:
         except FileNotFoundError:
             self.existing_settings = {"applications": []}
         except Exception as ex:
-            self.message_label.config(text=f"Произошла ошибка при загрузке настроек: {ex}")
+            self.message_label.delete('1.0', tk.END)
+            self.message_label.insert(tk.END, f"Произошла ошибка при загрузке настроек: {ex}")
             return
 
         # Проверьте, существует ли настройка с таким же 'folder'
@@ -157,15 +217,29 @@ class CRMStarterApp:
             try:
                 with open('settings.json', 'w') as settings_file:
                     json.dump(self.existing_settings, settings_file, indent=4)
-                self.message_label.config(text=f"Настройка '{path_to_delete}' успешно удалена.")
+                self.message_label.delete('1.0', tk.END)
+                self.message_label.insert(tk.END, f"Настройка '{path_to_delete}' успешно удалена.")
             except Exception as ex:
-                self.message_label.config(text=f"Произошла ошибка при сохранении настроек: {ex}")
+                self.message_label.delete('1.0', tk.END)
+                self.message_label.insert(tk.END, f"Произошла ошибка при сохранении настроек: {ex}")
             finally:
                 self.update_combobox()
         else:
-            self.message_label.config(text=f"Настройка '{path_to_delete}' не найдена.")
+            self.message_label.delete('1.0', tk.END)
+            self.message_label.insert(tk.END, f"Настройка '{path_to_delete}' не найдена.")
 
-    def update_combobox(self):
+    def get_folder_path_and_dll(self, path_to_delete):
+        selected_folder = self.combobox1.get()
+        if selected_folder:
+            selected_app = next((app for app in self.applications if app['folder'] == selected_folder), None)
+            if selected_app:
+                dll_path = selected_app.get('dll', '')
+                if dll_path:
+                    folder_path = selected_app['folder']
+                    path_to_delete = folder_path
+        return path_to_delete
+
+    def update_combobox(self, is_fields_cleared=True):
         # Получите список значений для Combobox
         combobox_values = [app['folder'] for app in self.applications]
 
@@ -175,15 +249,34 @@ class CRMStarterApp:
         # Установите новый список значений для Combobox
         self.combobox1['values'] = combobox_values
 
-        self.bd_frame_1.delete(0, tk.END)
-        self.app_port_frame_1.delete(0, tk.END)
-        self.redis_port_frame_1.delete(0, tk.END)
-        self.pg_port_frame_1.delete(0, tk.END)
-        self.dll_frame_1.delete(0, tk.END)
+        if is_fields_cleared:
+            self.alias_frame_1.delete(0, tk.END)
+            self.path_frame_1.delete(0, tk.END)
+            self.bd_frame_1.delete(0, tk.END)
+            self.app_port_frame_1.delete(0, tk.END)
+            self.redis_port_frame_1.delete(0, tk.END)
+            self.pg_port_frame_1.delete(0, tk.END)
+            self.dll_frame_1.delete(0, tk.END)
 
     @basis_handle_errors("update_fields")
     def update_fields(self, event):
+        self.message_label.delete('1.0', tk.END)
         selected_folder = self.combobox1.get()
+
+        # Обновление данных self.applications
+        try:
+            with open('settings.json', 'r') as settings_file:
+                settings = json.load(settings_file)
+                self.applications = settings.get('applications', [])
+        except FileNotFoundError:
+            self.applications = []
+        except Exception as ex:
+            self.message_label.insert(tk.END, f"Произошла ошибка при загрузке настроек: {ex}")
+            return
+
+        # Обновление данных self.combobox1
+        self.combobox1['values'] = [app['folder'] for app in self.applications]
+
         if selected_folder:
             selected_app = next((app for app in self.applications if app['folder'] == selected_folder), None)
             if selected_app:
@@ -268,8 +361,7 @@ class CRMStarterApp:
         global pids
         pids = [(pid, folder_path) for pid, folder_path in pids if pid not in selected_pids]
 
-        self.result_label.config(text=f"Завершены процессы с PID: {selected_pids}")
-        self.message_label.config(text="")
+        self.result_label.insert(tk.END, f"Завершены процессы с PID: {selected_pids}")
         window.destroy()
 
     @basis_handle_errors("close_tab_by_name")
@@ -328,6 +420,19 @@ class CRMStarterApp:
 
         window.mainloop()
 
+    def on_entry_focus_in(self, event):
+        self.button_delete.place_forget()
+        self.button_change.place(width=120, height=25, x=648, y=300)
+        path = None
+        path = self.get_folder_path_and_dll(path)
+        global path_delete
+        path_delete = path
+
+    def on_entry_focus_out(self, event):
+        self.button_delete.place(width=120, height=25, x=648, y=300)
+        global path_delete
+        path_delete = None
+
     @basis_handle_errors("create_gui")
     def create_gui(self):
         self.root.minsize(800, 400)
@@ -359,46 +464,63 @@ class CRMStarterApp:
         self.notebook.add(frame1, text="Crm run")
 
         self.combobox1 = ttk.Combobox(frame1)
-        self.combobox1.place(width=756, height=25, x=10, y=10)
+        self.combobox1.place(width=755, height=25, x=12, y=10)
         self.combobox1.bind('<<ComboboxSelected>>', self.update_fields)
 
-        button1 = ttk.Button(frame1, text="Стартанём!", command=self.run_command)
-        button1.place(width=100, height=25, x=665, y=45)
+        self.button_start = ttk.Button(frame1, text="Стартанём!", command=self.run_command)
+        self.button_start.place(width=100, height=25, x=667, y=45)
 
-        button1 = ttk.Button(frame1, text="Удалить настройку", command=self.delete_settings)
-        button1.place(width=120, height=25, x=645, y=300)
+        self.button_delete = ttk.Button(frame1, text="Удалить настройку", command=self.delete_settings)
+        self.button_delete.place(width=120, height=25, x=648, y=300)
 
-        button_stop = ttk.Button(frame1, text="Остановить процесс(ы)", command=self.stop_command)
-        button_stop.place(width=150, height=25, x=505, y=45)
+        self.button_change = ttk.Button(frame1, text="Изменить данные", command=self.change_settings)
+        self.button_delete.place(width=120, height=25, x=648, y=300)
+
+        self.button_stop = ttk.Button(frame1, text="Остановить процесс(ы)", command=self.stop_command)
+        self.button_stop.place(width=150, height=25, x=505, y=45)
 
         self.result_label = ttk.Label(frame1, text="", font=("Segoe UI", 10, "italic"))
         self.result_label.place(x=350, y=90)
 
-        self.message_label = ttk.Label(frame1, text="", font=("Segoe UI", 10, "italic"))
-        self.message_label.place(x=350, y=120)
+        self.message_label = tk.Text(frame1, font=("Segoe UI", 10, "italic"), width=44, height=7)
+        self.message_label.place(x=450, y=120)
 
         self.style.configure("Message.TLabel", foreground="green")  # Задайте нужный цвет, например, "green"
 
         self.alias_frame_1 = ttk.Entry(frame1)
         self.alias_frame_1.place(width=290, height=25, x=135, y=50)
+        self.alias_frame_1.bind("<FocusIn>", self.on_entry_focus_in)
+        self.alias_frame_1.bind("<FocusOut>", self.on_entry_focus_out)
 
         self.path_frame_1 = ttk.Entry(frame1)
         self.path_frame_1.place(width=290, height=25, x=135, y=90)
+        self.path_frame_1.bind("<FocusIn>", self.on_entry_focus_in)
+        self.path_frame_1.bind("<FocusOut>", self.on_entry_focus_out)
 
         self.bd_frame_1 = ttk.Entry(frame1)
         self.bd_frame_1.place(width=290, height=25, x=135, y=130)
+        self.bd_frame_1.bind("<FocusIn>", self.on_entry_focus_in)
+        self.bd_frame_1.bind("<FocusOut>", self.on_entry_focus_out)
 
         self.app_port_frame_1 = ttk.Entry(frame1)
         self.app_port_frame_1.place(width=291, height=25, x=135, y=170)
+        self.app_port_frame_1.bind("<FocusIn>", self.on_entry_focus_in)
+        self.app_port_frame_1.bind("<FocusOut>", self.on_entry_focus_out)
 
         self.redis_port_frame_1 = ttk.Entry(frame1)
         self.redis_port_frame_1.place(width=290, height=25, x=135, y=210)
+        self.redis_port_frame_1.bind("<FocusIn>", self.on_entry_focus_in)
+        self.redis_port_frame_1.bind("<FocusOut>", self.on_entry_focus_out)
 
         self.pg_port_frame_1 = ttk.Entry(frame1)
         self.pg_port_frame_1.place(width=290, height=25, x=135, y=250)
+        self.pg_port_frame_1.bind("<FocusIn>", self.on_entry_focus_in)
+        self.pg_port_frame_1.bind("<FocusOut>", self.on_entry_focus_out)
 
         self.dll_frame_1 = ttk.Entry(frame1)
         self.dll_frame_1.place(width=290, height=25, x=135, y=290)
+        self.dll_frame_1.bind("<FocusIn>", self.on_entry_focus_in)
+        self.dll_frame_1.bind("<FocusOut>", self.on_entry_focus_out)
 
         label1 = ttk.Label(frame1, text="Aлиас:", anchor="w", font="{Segoe UI} 10 {italic}")
         label1.place(width=120, height=25, x=10, y=50)

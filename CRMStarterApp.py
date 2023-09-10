@@ -407,7 +407,7 @@ class CRMStarterApp:
 
         window = tk.Toplevel(self.root)
         window.title("Выберите процессы для завершения")
-
+        window.iconbitmap('icons/icon.ico')
         window.minsize(600, 400)
         window.maxsize(600, 400)
         window_width_window = 600

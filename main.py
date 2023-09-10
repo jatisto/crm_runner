@@ -8,7 +8,7 @@ from utility_function import basis_handle_errors
 def main():
     root = ttk.Tk()
     CRMStarterApp(root)
-    # root.iconbitmap('icons/icon.ico')
+    root.iconbitmap('icons/icon.ico')
     root.mainloop()
 
 

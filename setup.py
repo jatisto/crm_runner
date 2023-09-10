@@ -1,4 +1,6 @@
 import argparse
+import os
+import subprocess
 from sys import platform
 from cx_Freeze import setup, Executable
 
@@ -46,7 +48,7 @@ executables: list[Executable] = [
         "main.py",
         base=base,
         target_name=f"{name_app}.exe",
-        # icon='icons/icon.ico',
+        icon='icons/icon.ico',
         copyright='Copyright © 2023 iam@eabdyushev@ru Eugene Abdyushev',
         shortcut_name=f"{name_app}",
         shortcut_dir="ProgramMenuFolder",
@@ -56,11 +58,10 @@ executables: list[Executable] = [
 
 def list_include() -> object:
     return [
-        # ("auth.json", "auth.json"),
+        ("auth.json", "auth.json"),
         ("version.txt", "version.txt"),
-        ("settings.json", "settings.json"),
-        ("run.ps1", "run.ps1"),
-        # ("icons", "icons"),
+        # ("settings.json", "settings.json"),
+        ("icons", "icons"),
     ]
 
 
@@ -85,6 +86,18 @@ setup(
     executables=executables
 )
 
+
 # Записать новую версию в файл build/version.txt
 with open("build/version.txt", "w") as version_file:
     version_file.write(new_version)
+
+# Creating an installation file
+bat_file_path = os.path.join(os.path.dirname(__file__), "build_exe.bat")
+subprocess.call(bat_file_path, shell=True)
+
+# # Passing a new version to a PowerShell script
+# ps1_file_path_version = os.path.join(os.path.dirname(__file__), "release_for_git.ps1")
+# subprocess.run(
+#     ["powershell", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", ps1_file_path_version, new_version],
+#     shell=True)
+

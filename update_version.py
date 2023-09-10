@@ -9,7 +9,7 @@ import requests
 
 from utility_function import handle_errors
 
-nameApp = "ClioLitePkgBuilder"
+nameApp = "CRMRunner"
 
 
 class Updater:

@@ -113,8 +113,7 @@ def run_command():
                         # Остальной код остается без изменений
                         Log.info(f"Процесс запущен {process.pid}", "run_process")
                         pid_proc_label.config(text=f"Pid: {process.pid}")
-                        global stop_signal
-                        while not stop_signal.is_set():
+                        while True:
                             output_line = process.stdout.readline()
                             if not output_line:
                                 break
@@ -140,9 +139,10 @@ def on_ok(window, boxes):
     global pids
     pids = [(pid, folder_path) for pid, folder_path in pids if pid not in selected_pids]
 
-    result_label.config(text=f"Завершены дочерние процессы с PID: {selected_pids}")
+    result_label.config(text=f"Завершены процессы с PID: {selected_pids}")
     message_label.config(text="")
-    console_output_text.insert(tk.END, f"Завершены дочерние процессы с PID: {selected_pids}")
+    console_output_text.insert(tk.END, f"")
+    console_output_text.insert(tk.END, f"Завершены процессы с PID: {selected_pids}")
     window.destroy()
 
 
@@ -213,7 +213,7 @@ x_position = (screen_width - window_width) // 2
 y_position = (screen_height - window_height) // 2
 root.geometry(f"{window_width}x{window_height}+{x_position}+{y_position}")
 
-notebook = ttk.Notebook(root, width=780, height=280)
+notebook = ttk.Notebook(root, width=780, height=255)
 notebook.place(x=10, y=10)
 
 frame1 = ttk.Frame(notebook)
@@ -301,20 +301,22 @@ entry11.place(width=290, height=25, x=230, y=210)
 label6 = ttk.Label(frame2, text="dll:", anchor="e", font="{Segoe UI} 10 {italic}")
 label6.place(width=120, height=25, x=90, y=210)
 
+# TODO Нужно добавить динамическое создание Notebook-в console log по одному на запущенный процесс и добавлять наименование и процесс
 frame3 = ttk.Frame(notebook)
 notebook.add(frame3, text="console log")
 
 horizontal_paned_window = ttk.PanedWindow(frame3, orient=tk.HORIZONTAL)
 horizontal_paned_window.place(width=765, height=245, x=5, y=5)
 
-# Создайте текстовое поле для вывода консольного вывода
-console_output_text = tk.Text(frame3, wrap=tk.WORD)
-console_output_text.pack(fill=tk.BOTH, expand=True)
+console_output_text = tk.Text(frame3, wrap=tk.WORD)  # Установите высоту, которая вам нужна
+console_output_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-# Добавьте вертикальную полосу прокрутки для текстового поля
 scrollbar = ttk.Scrollbar(frame3, orient=tk.VERTICAL, command=console_output_text.yview)
 scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+
 console_output_text.config(yscrollcommand=scrollbar.set)
+
 
 load_settings()
 root.mainloop()

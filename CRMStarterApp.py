@@ -17,6 +17,9 @@ pids = []
 @basis_handle_errors("CRMStarterApp")
 class CRMStarterApp:
     def __init__(self, root):
+        self.path_frame_1 = None
+        self.alias_frame_1 = None
+        self.alias_frame_2 = None
         self.notebook = None
         self.canvas_scrollbar = None
         self.canvas = None
@@ -28,7 +31,7 @@ class CRMStarterApp:
         self.path_frame_2 = None
         self.dll_frame_1 = None
         self.pg_port_frame_1 = None
-        self.redit_port_frame_1 = None
+        self.redis_port_frame_1 = None
         self.app_port_frame_1 = None
         self.bd_frame_1 = None
         self.result_label = None
@@ -63,6 +66,7 @@ class CRMStarterApp:
 
     @basis_handle_errors("save_settings")
     def save_settings(self):
+        alias = self.alias_frame_2.get()
         path = self.path_frame_2.get()
         bd = self.bd_frame_2.get()
         app_port = int(self.app_port_frame_2.get())
@@ -85,6 +89,7 @@ class CRMStarterApp:
         if existing_app:
             # Если настройка существует, обновите ее значения
             existing_app.update({
+                "alias": alias,
                 "folder": path,
                 "port": app_port,
                 "db": bd,
@@ -95,6 +100,7 @@ class CRMStarterApp:
         else:
             # Если настройка не существует, добавьте новую настройку в список
             self.existing_settings['applications'].append({
+                "alias": alias,
                 "folder": path,
                 "port": app_port,
                 "db": bd,
@@ -171,7 +177,7 @@ class CRMStarterApp:
 
         self.bd_frame_1.delete(0, tk.END)
         self.app_port_frame_1.delete(0, tk.END)
-        self.redit_port_frame_1.delete(0, tk.END)
+        self.redis_port_frame_1.delete(0, tk.END)
         self.pg_port_frame_1.delete(0, tk.END)
         self.dll_frame_1.delete(0, tk.END)
 
@@ -181,12 +187,16 @@ class CRMStarterApp:
         if selected_folder:
             selected_app = next((app for app in self.applications if app['folder'] == selected_folder), None)
             if selected_app:
+                self.alias_frame_1.delete(0, tk.END)
+                self.alias_frame_1.insert(0, selected_app['alias'])
+                self.path_frame_1.delete(0, tk.END)
+                self.path_frame_1.insert(0, selected_app['folder'])
                 self.bd_frame_1.delete(0, tk.END)
                 self.bd_frame_1.insert(0, selected_app['db'])
                 self.app_port_frame_1.delete(0, tk.END)
                 self.app_port_frame_1.insert(0, selected_app['port'])
-                self.redit_port_frame_1.delete(0, tk.END)
-                self.redit_port_frame_1.insert(0, str(selected_app['redis']))
+                self.redis_port_frame_1.delete(0, tk.END)
+                self.redis_port_frame_1.insert(0, str(selected_app['redis']))
                 self.pg_port_frame_1.delete(0, tk.END)
                 self.pg_port_frame_1.insert(0, str(selected_app['postgresql_port']))
                 self.dll_frame_1.delete(0, tk.END)
@@ -320,25 +330,25 @@ class CRMStarterApp:
 
     @basis_handle_errors("create_gui")
     def create_gui(self):
-        self.root.minsize(800, 350)
-        self.root.maxsize(800, 350)
+        self.root.minsize(800, 400)
+        self.root.maxsize(800, 400)
         window_width = 800
-        window_height = 350
+        window_height = 400
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
         x_position = (screen_width - window_width) // 2
         y_position = (screen_height - window_height) // 2
         self.root.geometry(f"{window_width}x{window_height}+{x_position}+{y_position}")
 
-        self.canvas = tk.Canvas(self.root, width=780, height=300)
+        self.canvas = tk.Canvas(self.root, width=780, height=400)
         self.canvas.place(x=10, y=10)
 
         self.canvas_scrollbar = ttk.Scrollbar(self.root, orient="horizontal", command=self.canvas.xview)
-        self.canvas_scrollbar.place(x=10, y=300, width=780)
+        self.canvas_scrollbar.place(x=10, y=375, width=780)
 
         self.canvas.configure(xscrollcommand=self.canvas_scrollbar.set)
 
-        self.notebook = ttk.Notebook(self.canvas, width=780, height=275)
+        self.notebook = ttk.Notebook(self.canvas, width=780, height=350)
         self.notebook.place(x=10, y=10)
 
         self.canvas.create_window((0, 0), window=self.notebook, anchor='nw')
@@ -352,14 +362,14 @@ class CRMStarterApp:
         self.combobox1.place(width=756, height=25, x=10, y=10)
         self.combobox1.bind('<<ComboboxSelected>>', self.update_fields)
 
-        button1 = ttk.Button(frame1, text="Run", command=self.run_command)
+        button1 = ttk.Button(frame1, text="Стартанём!", command=self.run_command)
         button1.place(width=100, height=25, x=665, y=45)
 
         button1 = ttk.Button(frame1, text="Удалить настройку", command=self.delete_settings)
-        button1.place(width=120, height=25, x=645, y=210)
+        button1.place(width=120, height=25, x=645, y=300)
 
-        button_stop = ttk.Button(frame1, text="Stop Command", command=self.stop_command)
-        button_stop.place(width=100, height=25, x=555, y=45)
+        button_stop = ttk.Button(frame1, text="Остановить процесс(ы)", command=self.stop_command)
+        button_stop.place(width=150, height=25, x=505, y=45)
 
         self.result_label = ttk.Label(frame1, text="", font=("Segoe UI", 10, "italic"))
         self.result_label.place(x=350, y=90)
@@ -369,59 +379,92 @@ class CRMStarterApp:
 
         self.style.configure("Message.TLabel", foreground="green")  # Задайте нужный цвет, например, "green"
 
+        self.alias_frame_1 = ttk.Entry(frame1)
+        self.alias_frame_1.place(width=290, height=25, x=135, y=50)
+
+        self.path_frame_1 = ttk.Entry(frame1)
+        self.path_frame_1.place(width=290, height=25, x=135, y=90)
+
         self.bd_frame_1 = ttk.Entry(frame1)
-        self.bd_frame_1.place(width=290, height=25, x=10, y=50)
-
-        self.dll_frame_1 = ttk.Entry(frame1)
-        self.dll_frame_1.place(width=290, height=25, x=10, y=90)
-
-        self.pg_port_frame_1 = ttk.Entry(frame1)
-        self.pg_port_frame_1.place(width=290, height=25, x=10, y=130)
-
-        self.redit_port_frame_1 = ttk.Entry(frame1)
-        self.redit_port_frame_1.place(width=290, height=25, x=10, y=170)
+        self.bd_frame_1.place(width=290, height=25, x=135, y=130)
 
         self.app_port_frame_1 = ttk.Entry(frame1)
-        self.app_port_frame_1.place(width=291, height=25, x=10, y=210)
+        self.app_port_frame_1.place(width=291, height=25, x=135, y=170)
+
+        self.redis_port_frame_1 = ttk.Entry(frame1)
+        self.redis_port_frame_1.place(width=290, height=25, x=135, y=210)
+
+        self.pg_port_frame_1 = ttk.Entry(frame1)
+        self.pg_port_frame_1.place(width=290, height=25, x=135, y=250)
+
+        self.dll_frame_1 = ttk.Entry(frame1)
+        self.dll_frame_1.place(width=290, height=25, x=135, y=290)
+
+        label1 = ttk.Label(frame1, text="Aлиас:", anchor="w", font="{Segoe UI} 10 {italic}")
+        label1.place(width=120, height=25, x=10, y=50)
+
+        label1 = ttk.Label(frame1, text="Путь:", anchor="w", font="{Segoe UI} 10 {italic}")
+        label1.place(width=120, height=25, x=10, y=90)
+
+        label2 = ttk.Label(frame1, text="БД:", anchor="w", font="{Segoe UI} 10 {italic}")
+        label2.place(width=120, height=25, x=10, y=130)
+
+        label3 = ttk.Label(frame1, text="Порт:", anchor="w", font="{Segoe UI} 10 {italic}")
+        label3.place(width=120, height=25, x=10, y=170)
+
+        label4 = ttk.Label(frame1, text="Redis:", anchor="w", font="{Segoe UI} 10 {italic}")
+        label4.place(width=120, height=25, x=10, y=210)
+
+        label5 = ttk.Label(frame1, text="pg порт:", anchor="w", font="{Segoe UI} 10 {italic}")
+        label5.place(width=120, height=25, x=10, y=250)
+
+        label6 = ttk.Label(frame1, text="dll:", anchor="w", font="{Segoe UI} 10 {italic}")
+        label6.place(width=120, height=25, x=10, y=290)
 
         frame2 = ttk.Frame(self.notebook)
         self.notebook.add(frame2, text="setting")
 
+        self.alias_frame_2 = ttk.Entry(frame2)
+        self.alias_frame_2.place(width=290, height=25, x=230, y=10)
+
         self.path_frame_2 = ttk.Entry(frame2)
-        self.path_frame_2.place(width=290, height=25, x=230, y=10)
+        self.path_frame_2.place(width=290, height=25, x=230, y=50)
 
         self.bd_frame_2 = ttk.Entry(frame2)
-        self.bd_frame_2.place(width=290, height=25, x=230, y=50)
+        self.bd_frame_2.place(width=290, height=25, x=230, y=90)
 
         self.app_port_frame_2 = ttk.Entry(frame2)
-        self.app_port_frame_2.place(width=290, height=25, x=230, y=90)
+        self.app_port_frame_2.place(width=290, height=25, x=230, y=130)
 
         self.redis_port_frame_2 = ttk.Entry(frame2)
-        self.redis_port_frame_2.place(width=290, height=25, x=230, y=130)
+        self.redis_port_frame_2.place(width=290, height=25, x=230, y=170)
 
         self.pg_port_frame_2 = ttk.Entry(frame2)
-        self.pg_port_frame_2.place(width=290, height=25, x=230, y=170)
+        self.pg_port_frame_2.place(width=290, height=25, x=230, y=210)
 
         self.dll_frame_2 = ttk.Entry(frame2)
-        self.dll_frame_2.place(width=290, height=25, x=230, y=210)
+        self.dll_frame_2.place(width=290, height=25, x=230, y=250)
 
         button2 = ttk.Button(frame2, text="Сохранить", command=self.save_settings)
         button2.place(width=100, height=25, x=660, y=215)
 
-        label1 = ttk.Label(frame2, text="Путь:", anchor="e", font="{Segoe UI} 10 {italic}")
+        label1 = ttk.Label(frame2, text="Aлиас:", anchor="e", font="{Segoe UI} 10 {italic}")
         label1.place(width=120, height=25, x=95, y=10)
 
+        label1 = ttk.Label(frame2, text="Путь:", anchor="e", font="{Segoe UI} 10 {italic}")
+        label1.place(width=120, height=25, x=95, y=50)
+
         label2 = ttk.Label(frame2, text="БД:", anchor="e", font="{Segoe UI} 10 {italic}")
-        label2.place(width=120, height=25, x=95, y=50)
+        label2.place(width=120, height=25, x=95, y=90)
 
         label3 = ttk.Label(frame2, text="Порт:", anchor="e", font="{Segoe UI} 10 {italic}")
-        label3.place(width=120, height=25, x=95, y=90)
+        label3.place(width=120, height=25, x=95, y=130)
 
         label4 = ttk.Label(frame2, text="Redis:", anchor="e", font="{Segoe UI} 10 {italic}")
-        label4.place(width=120, height=25, x=95, y=130)
+        label4.place(width=120, height=25, x=95, y=170)
 
         label5 = ttk.Label(frame2, text="pg порт:", anchor="e", font="{Segoe UI} 10 {italic}")
-        label5.place(width=120, height=25, x=95, y=170)
+        label5.place(width=120, height=25, x=95, y=210)
 
         label6 = ttk.Label(frame2, text="dll:", anchor="e", font="{Segoe UI} 10 {italic}")
-        label6.place(width=120, height=25, x=90, y=210)
+        label6.place(width=120, height=25, x=90, y=250)

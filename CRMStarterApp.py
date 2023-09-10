@@ -306,9 +306,14 @@ class CRMStarterApp:
                     dll_path = selected_app.get('dll', '')
                     if dll_path:
                         folder_path = selected_app['folder']
+                        alias = selected_app['alias']
+
+                        if self.is_tab_open(alias):
+                            messagebox.showerror("Ошибка", f"Проект с таким именем {alias} уже открыт.")
+                            return
 
                         new_frame = ttk.Frame(self.notebook)
-                        self.notebook.add(new_frame, text=f"{folder_path}")
+                        self.notebook.add(new_frame, text=f"{alias}")
 
                         os.chdir(folder_path)
 
@@ -329,7 +334,7 @@ class CRMStarterApp:
 
                             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                                        text=True, startupinfo=startupinfo)
-                            pids.append((process.pid, folder_path))
+                            pids.append((process.pid, folder_path, alias))
 
                             while True:
                                 output_line = process.stdout.readline()
@@ -350,30 +355,33 @@ class CRMStarterApp:
 
     @basis_handle_errors("on_ok")
     def on_ok(self, window, boxes):
-        selected_pids = [pid for pid, var_box, folder_path in boxes if var_box.get() == 1]
+        try:
+            selected_pids = [pid for pid, var_box, folder_path, alias in boxes if var_box.get() == 1]
 
-        for pid_proc_run, _, folder_path in [(pid, var_box, folder_path) for pid, var_box, folder_path in boxes if
-                                             var_box.get() == 1]:
-            child_process = psutil.Process(pid_proc_run)
-            child_process.terminate()
-            self.close_tab_by_name(folder_path)
+            for pid_proc_run, _, _, alias in [(pid, var_box, folder_path, alias) for pid, var_box, folder_path, alias in
+                                              boxes if var_box.get() == 1]:
+                child_process = psutil.Process(pid_proc_run)
+                child_process.terminate()
+                self.close_tab_by_name(alias)
 
-        global pids
-        pids = [(pid, folder_path) for pid, folder_path in pids if pid not in selected_pids]
+            global pids
+            pids = [(pid, folder_path, alias) for pid, folder_path, alias in pids if pid not in selected_pids]
 
-        self.result_label.insert(tk.END, f"Завершены процессы с PID: {selected_pids}")
-        window.destroy()
+            self.message_label.insert(tk.END, f"Завершены процессы с PID: {selected_pids}")
+            window.destroy()
+        except Exception as ex:
+            self.message_label.insert(tk.END, f"Произошла ошибка: {ex}")
 
     @basis_handle_errors("close_tab_by_name")
-    def close_tab_by_name(self, tab_path):
+    def close_tab_by_name(self, alias):
         try:
-            fixed_tab_path = tab_path
-            Log.info(f"Закрываем вкладку: {fixed_tab_path}", "close_tab_by_name")
+            fixed_tab_alias = alias
+            Log.info(f"Закрываем вкладку: {fixed_tab_alias}", "close_tab_by_name")
 
             index = None
             tab_names = [self.notebook.tab(i, "text") for i in range(self.notebook.index("end"))]
             for i, name in enumerate(tab_names):
-                if name == fixed_tab_path:
+                if name == fixed_tab_alias:
                     index = i
                     break
 
@@ -382,6 +390,14 @@ class CRMStarterApp:
         except Exception as ex:
             Log.info(f"Ошибка при закрытии вкладки: {ex}", "Exception")
             pass  # Обработка ошибки, если вкладка не найдена
+
+    def is_tab_open(self, alias):
+        try:
+            tab_names = [self.notebook.tab(i, "text") for i in range(self.notebook.index("end"))]
+            return alias in tab_names
+        except Exception as ex:
+            Log.info(f"Ошибка при проверке вкладки: {ex}", "Exception")
+            return False
 
     @basis_handle_errors("stop_command")
     def stop_command(self):
@@ -407,11 +423,11 @@ class CRMStarterApp:
 
         window.geometry(f"{window_width_window}x{window_height_window}+{x}+{y}")
         var_boxes = []
-        for pid, folder_path in pids:
+        for pid, folder_path, alias in pids:
             var_box = tk.IntVar()
             checkbox = tk.Checkbutton(window, text=f"PID: {pid}, Путь: {folder_path}", variable=var_box)
             checkbox.pack()
-            var_boxes.append((pid, var_box, folder_path))
+            var_boxes.append((pid, var_box, folder_path, alias))
 
         window.update_idletasks()
 

@@ -55,412 +55,9 @@ class CRMStarterApp:
         self.style = ttk.Style()
         self.root.geometry("800x300+0+0")
         self.root.title("CRM Starter")
+        self.load_static_content()
         self.create_gui()
         self.load_settings()
-
-    @basis_handle_errors("load_settings")
-    def load_settings(self):
-        try:
-            global static_content
-            with open('static_data.json', 'r', encoding='utf-8') as file:
-                static_content = json.load(file)
-
-            with open('settings.json', 'r', encoding='utf-8') as settings_file:
-                settings_data = json.load(settings_file)
-                self.applications.extend(settings_data.get('applications', []))
-                self.combobox1['values'] = [app['folder'] for app in self.applications]
-        except FileNotFoundError:
-            print(f"{self.set_static_content('file_not_exists_message')}")
-        except Exception as e:
-            print(f"{self.set_static_content('load_error_message')}: {e}")
-
-    @staticmethod
-    def set_static_content(content):
-        return static_content[content]
-
-    @basis_handle_errors("change_data")
-    def change_settings(self):
-        alias_value = self.alias_frame_1.get()
-        path_value = self.path_frame_1.get()
-        bd_value = self.bd_frame_1.get()
-        app_port_value = int(self.app_port_frame_1.get())
-        redis_port_value = int(self.redis_port_frame_1.get())
-        pg_port_value = int(self.pg_port_frame_1.get())
-        dll_value = self.dll_frame_1.get()
-
-        try:
-            with open('settings.json', 'r') as settings_file:
-                existing_settings = json.load(settings_file)
-        except FileNotFoundError:
-            existing_settings = {"applications": []}
-        except Exception as ex:
-            self.message_label.delete('1.0', tk.END)
-            self.message_label.insert(tk.END, f"{self.set_static_content('load_error_message')}: {ex}")
-            return
-
-        # Проверьте, существует ли настройка с таким же 'folder'
-        existing_app = next(
-            (app for app in existing_settings.get('applications', []) if app.get('folder') == path_value),
-            None)
-
-        if existing_app:
-            # Если настройка существует, обновите ее значения
-            existing_app.update({
-                "alias": alias_value,
-                "folder": path_value,
-                "port": app_port_value,
-                "db": bd_value,
-                "redis": redis_port_value,
-                "postgresql_port": pg_port_value,
-                "dll": dll_value,
-            })
-        else:
-            # Если настройка не существует, добавьте новую настройку в список
-            existing_settings['applications'].append({
-                "alias": alias_value,
-                "folder": path_value,
-                "port": app_port_value,
-                "db": bd_value,
-                "redis": redis_port_value,
-                "postgresql_port": pg_port_value,
-                "dll": dll_value,
-            })
-
-        # Сохраните обновленные настройки в файл
-        try:
-            with open('settings.json', 'w') as settings_file:
-                json.dump(existing_settings, settings_file, indent=4)
-            self.message_label.delete('1.0', tk.END)
-            self.message_label.insert(tk.END, self.set_static_content('success_message'))
-        except Exception as ex:
-            self.message_label.delete('1.0', tk.END)
-            self.message_label.insert(tk.END, f"{self.set_static_content('save_load_error_message')}: {ex}")
-        else:
-            self.button_change.place_forget()
-            self.update_combobox()
-
-    @basis_handle_errors("save_settings")
-    def save_settings(self):
-        alias = self.alias_frame_2.get()
-        path = self.path_frame_2.get()
-        bd = self.bd_frame_2.get()
-        app_port = int(self.app_port_frame_2.get())
-        redis = int(self.redis_port_frame_2.get())
-        port_pg = int(self.pg_port_frame_2.get())
-        dll = self.dll_frame_2.get()
-
-        try:
-            with open('settings.json', 'r') as settings_file:
-                self.existing_settings = json.load(settings_file)
-        except FileNotFoundError:
-            self.existing_settings = {"applications": []}
-        except Exception as ex:
-            self.message_label.insert(tk.END, f"{self.set_static_content('load_error_message')}: {ex}")
-            return
-
-        # Проверьте, существует ли настройка с таким же 'folder'
-        existing_app = self.is_exist_setting(path)
-
-        if existing_app:
-            # Если настройка существует, обновите ее значения
-            existing_app.update({
-                "alias": alias,
-                "folder": path,
-                "port": app_port,
-                "db": bd,
-                "redis": redis,
-                "postgresql_port": port_pg,
-                "dll": dll,
-            })
-        else:
-            # Если настройка не существует, добавьте новую настройку в список
-            self.existing_settings['applications'].append({
-                "alias": alias,
-                "folder": path,
-                "port": app_port,
-                "db": bd,
-                "redis": redis,
-                "postgresql_port": port_pg,
-                "dll": dll,
-            })
-
-        # Сохраните обновленные настройки в файл
-        try:
-            with open('settings.json', 'w') as settings_file:
-                json.dump(self.existing_settings, settings_file, indent=4)
-            messagebox.showinfo("Информация", self.set_static_content('success_message'))
-        except Exception as ex:
-            self.message_label.insert(tk.END, f"{self.set_static_content('save_load_error_message')}: {ex}")
-        else:
-            self.update_combobox()
-
-    def is_exist_setting(self, path):
-        return next(
-            (app for app in self.existing_settings.get('applications', []) if app.get('folder') == path),
-            None)
-
-    def delete_settings(self, delete_path=None):
-        path_to_delete = None
-        path_to_delete = delete_path if delete_path else self.get_folder_path_and_dll(path_to_delete)
-
-        self.existing_settings = {}
-        try:
-            with open('settings.json', 'r') as settings_file:
-                self.existing_settings = json.load(settings_file)
-        except FileNotFoundError:
-            self.existing_settings = {"applications": []}
-        except Exception as ex:
-            self.message_label.delete('1.0', tk.END)
-            self.message_label.insert(tk.END, f"{self.set_static_content('load_error_message')}: {ex}")
-            return
-
-        # Проверьте, существует ли настройка с таким же 'folder'
-        existing_app = self.is_exist_setting(path_to_delete)
-
-        if existing_app:
-            # Если настройка существует, удалите ее из списка
-            self.existing_settings['applications'].remove(existing_app)
-            # Обновите self.applications
-            self.applications = self.existing_settings.get("applications", [])
-            # Сохраните обновленные настройки в файл
-            try:
-                with open('settings.json', 'w') as settings_file:
-                    json.dump(self.existing_settings, settings_file, indent=4)
-                self.message_label.delete('1.0', tk.END)
-                self.message_label.insert(tk.END,
-                                          f"{self.set_static_content('entry_was_successfully_deleted')}. ['{path_to_delete}']")
-            except Exception as ex:
-                self.message_label.delete('1.0', tk.END)
-                self.message_label.insert(tk.END, f"{self.set_static_content('save_load_error_message')}: {ex}")
-            finally:
-                self.update_combobox()
-        else:
-            self.message_label.delete('1.0', tk.END)
-            self.message_label.insert(tk.END, f"{self.set_static_content('not_found')} ['{path_to_delete}']")
-
-    def get_folder_path_and_dll(self, path_to_delete):
-        selected_folder = self.combobox1.get()
-        if selected_folder:
-            selected_app = next((app for app in self.applications if app['folder'] == selected_folder), None)
-            if selected_app:
-                dll_path = selected_app.get('dll', '')
-                if dll_path:
-                    folder_path = selected_app['folder']
-                    path_to_delete = folder_path
-        return path_to_delete
-
-    def update_combobox(self, is_fields_cleared=True):
-        combobox_values = [app['folder'] for app in self.applications]
-        self.combobox1.set("")
-        self.combobox1['values'] = combobox_values
-
-        if is_fields_cleared:
-            self.alias_frame_1.delete(0, tk.END)
-            self.path_frame_1.delete(0, tk.END)
-            self.bd_frame_1.delete(0, tk.END)
-            self.app_port_frame_1.delete(0, tk.END)
-            self.redis_port_frame_1.delete(0, tk.END)
-            self.pg_port_frame_1.delete(0, tk.END)
-            self.dll_frame_1.delete(0, tk.END)
-
-    @basis_handle_errors("update_fields")
-    def update_fields(self, event):
-        self.message_label.delete('1.0', tk.END)
-        selected_folder = self.combobox1.get()
-
-        # Обновление данных self.applications
-        try:
-            with open('settings.json', 'r') as settings_file:
-                settings = json.load(settings_file)
-                self.applications = settings.get('applications', [])
-        except FileNotFoundError:
-            self.applications = []
-        except Exception as ex:
-            self.message_label.insert(tk.END, f"{self.set_static_content('load_error_message')}: {ex}")
-            return
-
-        # Обновление данных self.combobox1
-        self.combobox1['values'] = [app['folder'] for app in self.applications]
-
-        if selected_folder:
-            selected_app = next((app for app in self.applications if app['folder'] == selected_folder), None)
-            if selected_app:
-                self.alias_frame_1.delete(0, tk.END)
-                self.alias_frame_1.insert(0, selected_app['alias'])
-                self.path_frame_1.delete(0, tk.END)
-                self.path_frame_1.insert(0, selected_app['folder'])
-                self.bd_frame_1.delete(0, tk.END)
-                self.bd_frame_1.insert(0, selected_app['db'])
-                self.app_port_frame_1.delete(0, tk.END)
-                self.app_port_frame_1.insert(0, selected_app['port'])
-                self.redis_port_frame_1.delete(0, tk.END)
-                self.redis_port_frame_1.insert(0, str(selected_app['redis']))
-                self.pg_port_frame_1.delete(0, tk.END)
-                self.pg_port_frame_1.insert(0, str(selected_app['postgresql_port']))
-                self.dll_frame_1.delete(0, tk.END)
-                self.dll_frame_1.insert(0, selected_app['dll'])
-
-    @basis_handle_errors("run_command")
-    def run_command(self):
-        current_directory = os.getcwd()
-        try:
-            selected_folder = self.combobox1.get()
-            if selected_folder:
-                selected_app = next((app for app in self.applications if app['folder'] == selected_folder), None)
-                if selected_app:
-                    dll_path = selected_app.get('dll', '')
-                    if dll_path:
-                        folder_path = selected_app['folder']
-                        alias = selected_app['alias']
-
-                        if self.is_tab_open(alias):
-                            messagebox.showerror("Ошибка", f"Проект с таким именем {alias} уже открыт.")
-                            return
-
-                        new_frame = ttk.Frame(self.notebook)
-                        self.notebook.add(new_frame, text=f"{alias}")
-
-                        os.chdir(folder_path)
-
-                        console_output_text = tk.Text(new_frame, wrap=tk.WORD)
-                        console_output_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-                        scrollbar = ttk.Scrollbar(new_frame, orient=tk.VERTICAL, command=console_output_text.yview)
-                        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-                        console_output_text.config(yscrollcommand=scrollbar.set)
-
-                        startupinfo = subprocess.STARTUPINFO()
-                        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-
-                        def run_process():
-                            global process, pids
-                            command = f"dotnet {dll_path}"
-
-                            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                                       text=True, startupinfo=startupinfo)
-                            pids.append((process.pid, folder_path, alias))
-
-                            while True:
-                                output_line = process.stdout.readline()
-                                if not output_line:
-                                    break
-                                console_output_text.insert(tk.END, output_line)
-
-                                self.canvas.update_idletasks()
-                                self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
-                        process_thread_run = threading.Thread(target=run_process)
-                        process_thread_run.start()
-                        subprocess.Popen(["powershell", "-noexit"], startupinfo=startupinfo)
-        except Exception as e:
-            Log.info(f"{self.set_static_content('run_command_error_message')}: {e}", "Exception")
-        finally:
-            os.chdir(current_directory)
-
-    @basis_handle_errors("on_ok")
-    def on_ok(self, window, boxes):
-        try:
-            selected_pids = [pid for pid, var_box, folder_path, alias in boxes if var_box.get() == 1]
-
-            for pid_proc_run, _, _, alias in [(pid, var_box, folder_path, alias) for pid, var_box, folder_path, alias in
-                                              boxes if var_box.get() == 1]:
-                child_process = psutil.Process(pid_proc_run)
-                child_process.terminate()
-                self.close_tab_by_name(alias)
-
-            global pids
-            pids = [(pid, folder_path, alias) for pid, folder_path, alias in pids if pid not in selected_pids]
-
-            self.message_label.insert(tk.END,
-                                      f"{self.set_static_content('entry_was_successfully_deleted')}: {selected_pids}")
-            window.destroy()
-        except Exception as ex:
-            self.message_label.insert(tk.END, f"{self.set_static_content('error_message')}: {ex}")
-
-    @basis_handle_errors("close_tab_by_name")
-    def close_tab_by_name(self, alias):
-        try:
-            fixed_tab_alias = alias
-            Log.info(f"Закрываем вкладку: {fixed_tab_alias}", "close_tab_by_name")
-
-            index = None
-            tab_names = [self.notebook.tab(i, "text") for i in range(self.notebook.index("end"))]
-            for i, name in enumerate(tab_names):
-                if name == fixed_tab_alias:
-                    index = i
-                    break
-
-            if index is not None:
-                self.notebook.forget(index)
-        except Exception as ex:
-            Log.info(f"{self.set_static_content('error_closing_tab_message')}: {ex}", "Exception")
-            pass  # Обработка ошибки, если вкладка не найдена
-
-    def is_tab_open(self, alias):
-        try:
-            tab_names = [self.notebook.tab(i, "text") for i in range(self.notebook.index("end"))]
-            return alias in tab_names
-        except Exception as ex:
-            Log.info(f"{self.set_static_content('error_check_tab_message')}: {ex}", "Exception")
-            return False
-
-    @basis_handle_errors("stop_command")
-    def stop_command(self):
-        if not pids:
-            messagebox.showinfo(f"{self.set_static_content('error_stop_process_message_title')}",
-                                f"{self.set_static_content('error_start_process_message')}")
-            return
-
-        window = tk.Toplevel(self.root)
-        window.title(f"{self.set_static_content('select_process_message')}")
-        window.iconbitmap('icons/icon.ico')
-        window.minsize(600, 400)
-        window.maxsize(600, 400)
-        window_width_window = 600
-        window_height_window = 400
-
-        parent_x = self.root.winfo_x()
-        parent_y = self.root.winfo_y()
-        parent_width = self.root.winfo_width()
-        parent_height = self.root.winfo_height()
-
-        x = parent_x + (parent_width - window_width_window) // 2
-        y = parent_y + (parent_height - window_height_window) // 2
-
-        window.geometry(f"{window_width_window}x{window_height_window}+{x}+{y}")
-        var_boxes = []
-        for pid, folder_path, alias in pids:
-            var_box = tk.IntVar()
-            checkbox = tk.Checkbutton(window, text=f"PID: {pid}, Путь: {folder_path}", variable=var_box)
-            checkbox.pack()
-            var_boxes.append((pid, var_box, folder_path, alias))
-
-        window.update_idletasks()
-
-        ok_button = tk.Button(window, text="OK", command=lambda: self.on_ok(window, var_boxes))
-        ok_button.pack()
-
-        window.mainloop()
-
-    def on_entry_focus_in_message(self, event):
-        self.button_change.place_forget()
-        self.button_delete.place(width=120, height=25, x=648, y=300)
-        global path_delete
-        path_delete = None
-
-    def on_entry_focus_in(self, event):
-        self.button_delete.place_forget()
-        self.button_change.place(width=120, height=25, x=648, y=300)
-        path = None
-        path = self.get_folder_path_and_dll(path)
-        global path_delete
-        path_delete = path
-
-    def on_entry_focus_out(self, event):
-        self.button_delete.place(width=120, height=25, x=648, y=300)
-        global path_delete
-        path_delete = None
 
     @basis_handle_errors("create_gui")
     def create_gui(self):
@@ -621,3 +218,411 @@ class CRMStarterApp:
 
         label6 = ttk.Label(frame2, text="dll:", anchor="e", font="{Segoe UI} 10 {italic}")
         label6.place(width=120, height=25, x=90, y=250)
+
+    @basis_handle_errors("load_settings")
+    def load_static_content(self):
+        try:
+            global static_content
+            with open('static_data.json', 'r', encoding='utf-8') as file:
+                static_content = json.load(file)
+
+        except FileNotFoundError:
+            print(f"{self.set_static_content('file_not_exists_message')}")
+        except Exception as e:
+            print(f"{self.set_static_content('load_error_message')}: {e}")
+
+    @basis_handle_errors("load_settings")
+    def load_settings(self):
+        try:
+            with open('settings.json', 'r', encoding='utf-8') as settings_file:
+                settings_data = json.load(settings_file)
+                self.applications.extend(settings_data.get('applications', []))
+                self.combobox1['values'] = [app['folder'] for app in self.applications]
+        except FileNotFoundError:
+            print(f"{self.set_static_content('file_not_exists_message')}")
+        except Exception as e:
+            print(f"{self.set_static_content('load_error_message')}: {e}")
+
+    @basis_handle_errors("change_data")
+    def change_settings(self):
+        alias_value = self.alias_frame_1.get()
+        path_value = self.path_frame_1.get()
+        bd_value = self.bd_frame_1.get()
+        app_port_value = int(self.app_port_frame_1.get())
+        redis_port_value = int(self.redis_port_frame_1.get())
+        pg_port_value = int(self.pg_port_frame_1.get())
+        dll_value = self.dll_frame_1.get()
+
+        try:
+            with open('settings.json', 'r') as settings_file:
+                existing_settings = json.load(settings_file)
+        except FileNotFoundError:
+            existing_settings = {"applications": []}
+        except Exception as ex:
+            self.handle_error_message(f"{self.set_static_content('load_error_message')}: {ex}")
+            return
+
+        existing_app = self.find_existing_app(existing_settings, path_value)
+        if existing_app:
+            existing_app.update({
+                "alias": alias_value,
+                "folder": path_value,
+                "port": app_port_value,
+                "db": bd_value,
+                "redis": redis_port_value,
+                "postgresql_port": pg_port_value,
+                "dll": dll_value,
+            })
+        else:
+            existing_settings['applications'].append({
+                "alias": alias_value,
+                "folder": path_value,
+                "port": app_port_value,
+                "db": bd_value,
+                "redis": redis_port_value,
+                "postgresql_port": pg_port_value,
+                "dll": dll_value,
+            })
+
+        try:
+            with open('settings.json', 'w') as settings_file:
+                json.dump(existing_settings, settings_file, indent=4)
+            self.handle_success_message(self.set_static_content('success_message_changed'))
+        except Exception as ex:
+            self.handle_error_message(f"{self.set_static_content('load_error_message')}: {ex}")
+        else:
+            self.button_change.place_forget()
+            self.update_combobox()
+
+    @basis_handle_errors("save_settings")
+    def save_settings(self):
+        alias = self.alias_frame_2.get()
+        path = self.path_frame_2.get()
+        bd = self.bd_frame_2.get()
+        app_port = int(self.app_port_frame_2.get())
+        redis = int(self.redis_port_frame_2.get())
+        port_pg = int(self.pg_port_frame_2.get())
+        dll = self.dll_frame_2.get()
+
+        try:
+            with open('settings.json', 'r') as settings_file:
+                self.existing_settings = json.load(settings_file)
+        except FileNotFoundError:
+            self.existing_settings = {"applications": []}
+        except Exception as ex:
+            self.handle_error_message(f"{self.set_static_content('load_error_message')}: {ex}")
+            return
+
+        existing_app = self.is_exist_setting(path)
+        if existing_app:
+            existing_app.update({
+                "alias": alias,
+                "folder": path,
+                "port": app_port,
+                "db": bd,
+                "redis": redis,
+                "postgresql_port": port_pg,
+                "dll": dll,
+            })
+        else:
+            self.existing_settings['applications'].append({
+                "alias": alias,
+                "folder": path,
+                "port": app_port,
+                "db": bd,
+                "redis": redis,
+                "postgresql_port": port_pg,
+                "dll": dll,
+            })
+
+        try:
+            with open('settings.json', 'w') as settings_file:
+                json.dump(self.existing_settings, settings_file, indent=4)
+            messagebox.showinfo("Информация", self.set_static_content('success_message_save'))
+        except Exception as ex:
+            self.handle_error_message(f"{self.set_static_content('save_load_error_message')}: {ex}")
+        else:
+            self.update_combobox()
+
+    def delete_settings(self, delete_path=None):
+        path_to_delete = None
+        path_to_delete = delete_path if delete_path else self.get_folder_path_and_dll(path_to_delete)
+
+        self.existing_settings = {}
+        try:
+            with open('settings.json', 'r') as settings_file:
+                self.existing_settings = json.load(settings_file)
+        except FileNotFoundError:
+            self.existing_settings = {"applications": []}
+        except Exception as ex:
+            self.message_label.delete('1.0', tk.END)
+            self.message_label.insert(tk.END, f"{self.set_static_content('load_error_message')}: {ex}")
+            return
+
+        existing_app = self.is_exist_setting(path_to_delete)
+
+        if existing_app:
+            self.existing_settings['applications'].remove(existing_app)
+            self.applications = self.existing_settings.get("applications", [])
+            try:
+                with open('settings.json', 'w') as settings_file:
+                    json.dump(self.existing_settings, settings_file, indent=4)
+                self.message_label.delete('1.0', tk.END)
+                self.message_label.insert(tk.END,
+                                          f"{self.set_static_content('success_message_delete')}. ['{path_to_delete}']")
+            except Exception as ex:
+                self.message_label.delete('1.0', tk.END)
+                self.message_label.insert(tk.END, f"{self.set_static_content('load_error_message')}: {ex}")
+            finally:
+                self.update_combobox()
+        else:
+            self.message_label.delete('1.0', tk.END)
+            self.message_label.insert(tk.END, f"{self.set_static_content('not_found')} ['{path_to_delete}']")
+
+    def update_combobox(self, is_fields_cleared=True):
+        combobox_values = [app['folder'] for app in self.applications]
+        self.combobox1.set("")
+        self.combobox1['values'] = combobox_values
+
+        if is_fields_cleared:
+            self.alias_frame_1.delete(0, tk.END)
+            self.path_frame_1.delete(0, tk.END)
+            self.bd_frame_1.delete(0, tk.END)
+            self.app_port_frame_1.delete(0, tk.END)
+            self.redis_port_frame_1.delete(0, tk.END)
+            self.pg_port_frame_1.delete(0, tk.END)
+            self.dll_frame_1.delete(0, tk.END)
+
+    @basis_handle_errors("update_fields")
+    def update_fields(self, event):
+        self.message_label.delete('1.0', tk.END)
+        selected_folder = self.combobox1.get()
+
+        # Обновление данных self.applications
+        try:
+            with open('settings.json', 'r') as settings_file:
+                settings = json.load(settings_file)
+                self.applications = settings.get('applications', [])
+        except FileNotFoundError:
+            self.applications = []
+        except Exception as ex:
+            self.message_label.insert(tk.END, f"{self.set_static_content('load_error_message')}: {ex}")
+            return
+
+        # Обновление данных self.combobox1
+        self.combobox1['values'] = [app['folder'] for app in self.applications]
+
+        if selected_folder:
+            selected_app = next((app for app in self.applications if app['folder'] == selected_folder), None)
+            if selected_app:
+                self.alias_frame_1.delete(0, tk.END)
+                self.alias_frame_1.insert(0, selected_app['alias'])
+                self.path_frame_1.delete(0, tk.END)
+                self.path_frame_1.insert(0, selected_app['folder'])
+                self.bd_frame_1.delete(0, tk.END)
+                self.bd_frame_1.insert(0, selected_app['db'])
+                self.app_port_frame_1.delete(0, tk.END)
+                self.app_port_frame_1.insert(0, selected_app['port'])
+                self.redis_port_frame_1.delete(0, tk.END)
+                self.redis_port_frame_1.insert(0, str(selected_app['redis']))
+                self.pg_port_frame_1.delete(0, tk.END)
+                self.pg_port_frame_1.insert(0, str(selected_app['postgresql_port']))
+                self.dll_frame_1.delete(0, tk.END)
+                self.dll_frame_1.insert(0, selected_app['dll'])
+
+    @basis_handle_errors("run_command")
+    def run_command(self):
+        current_directory = os.getcwd()
+        try:
+            selected_folder = self.combobox1.get()
+            if selected_folder:
+                selected_app = next((app for app in self.applications if app['folder'] == selected_folder), None)
+                if selected_app:
+                    dll_path = selected_app.get('dll', '')
+                    if dll_path:
+                        folder_path = selected_app['folder']
+                        alias = selected_app['alias']
+
+                        if self.is_tab_open(alias):
+                            messagebox.showerror("Ошибка", f"Проект с таким именем {alias} уже открыт.")
+                            return
+
+                        new_frame = ttk.Frame(self.notebook)
+                        self.notebook.add(new_frame, text=f"{alias}")
+
+                        os.chdir(folder_path)
+
+                        console_output_text = tk.Text(new_frame, wrap=tk.WORD)
+                        console_output_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+                        scrollbar = ttk.Scrollbar(new_frame, orient=tk.VERTICAL, command=console_output_text.yview)
+                        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+                        console_output_text.config(yscrollcommand=scrollbar.set)
+
+                        startupinfo = subprocess.STARTUPINFO()
+                        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+                        def run_process():
+                            global process, pids
+                            command = f"dotnet {dll_path}"
+
+                            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                                       text=True, startupinfo=startupinfo)
+                            pids.append((process.pid, folder_path, alias))
+
+                            while True:
+                                output_line = process.stdout.readline()
+                                if not output_line:
+                                    break
+                                console_output_text.insert(tk.END, output_line)
+
+                                self.canvas.update_idletasks()
+                                self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+                        process_thread_run = threading.Thread(target=run_process)
+                        process_thread_run.start()
+                        subprocess.Popen(["powershell", "-noexit"], startupinfo=startupinfo)
+        except Exception as e:
+            Log.info(f"{self.set_static_content('run_command_error_message')}: {e}", "Exception")
+        finally:
+            os.chdir(current_directory)
+
+    @basis_handle_errors("on_ok")
+    def on_ok(self, window, boxes):
+        try:
+            selected_pids = [pid for pid, var_box, folder_path, alias in boxes if var_box.get() == 1]
+
+            for pid_proc_run, _, _, alias in [(pid, var_box, folder_path, alias) for pid, var_box, folder_path, alias in
+                                              boxes if var_box.get() == 1]:
+                child_process = psutil.Process(pid_proc_run)
+                child_process.terminate()
+                self.close_tab_by_name(alias)
+
+            global pids
+            pids = [(pid, folder_path, alias) for pid, folder_path, alias in pids if pid not in selected_pids]
+
+            self.message_label.insert(tk.END,
+                                      f"{self.set_static_content('entry_was_successfully_deleted')}: {selected_pids}")
+            window.destroy()
+        except Exception as ex:
+            self.message_label.insert(tk.END, f"{self.set_static_content('error_message')}: {ex}")
+
+    @basis_handle_errors("close_tab_by_name")
+    def close_tab_by_name(self, alias):
+        try:
+            fixed_tab_alias = alias
+            Log.info(f"Закрываем вкладку: {fixed_tab_alias}", "close_tab_by_name")
+
+            index = None
+            tab_names = [self.notebook.tab(i, "text") for i in range(self.notebook.index("end"))]
+            for i, name in enumerate(tab_names):
+                if name == fixed_tab_alias:
+                    index = i
+                    break
+
+            if index is not None:
+                self.notebook.forget(index)
+        except Exception as ex:
+            Log.info(f"{self.set_static_content('error_closing_tab_message')}: {ex}", "Exception")
+            pass  # Обработка ошибки, если вкладка не найдена
+
+    @basis_handle_errors("stop_command")
+    def stop_command(self):
+        if not pids:
+            messagebox.showinfo(f"{self.set_static_content('error_stop_process_message_title')}",
+                                f"{self.set_static_content('error_start_process_message')}")
+            return
+
+        window = tk.Toplevel(self.root)
+        window.title(f"{self.set_static_content('select_process_message')}")
+        window.iconbitmap('icons/icon.ico')
+        window.minsize(600, 400)
+        window.maxsize(600, 400)
+        window_width_window = 600
+        window_height_window = 400
+
+        parent_x = self.root.winfo_x()
+        parent_y = self.root.winfo_y()
+        parent_width = self.root.winfo_width()
+        parent_height = self.root.winfo_height()
+
+        x = parent_x + (parent_width - window_width_window) // 2
+        y = parent_y + (parent_height - window_height_window) // 2
+
+        window.geometry(f"{window_width_window}x{window_height_window}+{x}+{y}")
+        var_boxes = []
+        for pid, folder_path, alias in pids:
+            var_box = tk.IntVar()
+            checkbox = tk.Checkbutton(window, text=f"PID: {pid}, Путь: {folder_path}", variable=var_box)
+            checkbox.pack()
+            var_boxes.append((pid, var_box, folder_path, alias))
+
+        window.update_idletasks()
+
+        ok_button = tk.Button(window, text="OK", command=lambda: self.on_ok(window, var_boxes))
+        ok_button.pack()
+
+        window.mainloop()
+
+    def on_entry_focus_in_message(self, event):
+        self.button_change.place_forget()
+        self.button_delete.place(width=120, height=25, x=648, y=300)
+        global path_delete
+        path_delete = None
+
+    def on_entry_focus_in(self, event):
+        self.button_delete.place_forget()
+        self.button_change.place(width=120, height=25, x=648, y=300)
+        path = None
+        path = self.get_folder_path_and_dll(path)
+        global path_delete
+        path_delete = path
+
+    def on_entry_focus_out(self, event):
+        self.button_delete.place(width=120, height=25, x=648, y=300)
+        global path_delete
+        path_delete = None
+
+    def get_folder_path_and_dll(self, path_to_delete):
+        selected_folder = self.combobox1.get()
+        if selected_folder:
+            selected_app = next((app for app in self.applications if app['folder'] == selected_folder), None)
+            if selected_app:
+                dll_path = selected_app.get('dll', '')
+                if dll_path:
+                    folder_path = selected_app['folder']
+                    path_to_delete = folder_path
+        return path_to_delete
+
+    def is_tab_open(self, alias):
+        try:
+            tab_names = [self.notebook.tab(i, "text") for i in range(self.notebook.index("end"))]
+            return alias in tab_names
+        except Exception as ex:
+            Log.info(f"{self.set_static_content('error_check_tab_message')}: {ex}", "Exception")
+            return False
+
+    def is_exist_setting(self, path):
+        return next(
+            (app for app in self.existing_settings.get('applications', []) if app.get('folder') == path),
+            None)
+
+    @staticmethod
+    def handle_error_message(error_message):
+        messagebox.showerror("Ошибка", error_message)
+
+    @staticmethod
+    def handle_success_message(success_message):
+        messagebox.showinfo("Успех", success_message)
+
+    @staticmethod
+    def find_existing_app(existing_settings, path):
+        for app in existing_settings.get('applications', []):
+            if app.get('folder') == path:
+                return app
+        return None
+
+    @staticmethod
+    def set_static_content(content):
+        return static_content[content]

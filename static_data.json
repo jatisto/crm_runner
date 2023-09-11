@@ -1,7 +1,9 @@
 {
   "file_not_exists_message": "Файл settings.json не найден.",
   "load_error_message": "Произошла ошибка при загрузке данных",
-  "success_message": "Данные успешно загружены.",
+  "success_message_changed": "Данные успешно изменены.",
+  "success_message_save": "Данные успешно сохранены.",
+  "success_message_delete": "Данные успешно удалены.",
   "save_error_message": "Произошла ошибка при сохранении данных",
   "entry_was_successfully_deleted": "Запись успешно удалена.",
   "not_found": "Настройка не найдена.",

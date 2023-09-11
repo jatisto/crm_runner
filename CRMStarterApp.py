@@ -13,6 +13,7 @@ from utility_function import basis_handle_errors, Log
 process = None
 pids = []
 path_delete = None
+static_content = []
 
 
 @basis_handle_errors("CRMStarterApp")
@@ -60,14 +61,22 @@ class CRMStarterApp:
     @basis_handle_errors("load_settings")
     def load_settings(self):
         try:
-            with open('settings.json', 'r') as settings_file:
+            global static_content
+            with open('static_data.json', 'r', encoding='utf-8') as file:
+                static_content = json.load(file)
+
+            with open('settings.json', 'r', encoding='utf-8') as settings_file:
                 settings_data = json.load(settings_file)
                 self.applications.extend(settings_data.get('applications', []))
                 self.combobox1['values'] = [app['folder'] for app in self.applications]
         except FileNotFoundError:
-            print("Файл settings.json не найден.")
+            print(f"{self.set_static_content('file_not_exists_message')}")
         except Exception as e:
-            print(f"Произошла ошибка при загрузке настроек: {e}")
+            print(f"{self.set_static_content('load_error_message')}: {e}")
+
+    @staticmethod
+    def set_static_content(content):
+        return static_content[content]
 
     @basis_handle_errors("change_data")
     def change_settings(self):
@@ -86,7 +95,7 @@ class CRMStarterApp:
             existing_settings = {"applications": []}
         except Exception as ex:
             self.message_label.delete('1.0', tk.END)
-            self.message_label.insert(tk.END, f"Произошла ошибка при загрузке настроек: {ex}")
+            self.message_label.insert(tk.END, f"{self.set_static_content('load_error_message')}: {ex}")
             return
 
         # Проверьте, существует ли настройка с таким же 'folder'
@@ -122,10 +131,10 @@ class CRMStarterApp:
             with open('settings.json', 'w') as settings_file:
                 json.dump(existing_settings, settings_file, indent=4)
             self.message_label.delete('1.0', tk.END)
-            self.message_label.insert(tk.END, "Настройки успешно сохранены.")
+            self.message_label.insert(tk.END, self.set_static_content('success_message'))
         except Exception as ex:
             self.message_label.delete('1.0', tk.END)
-            self.message_label.insert(tk.END, f"Произошла ошибка при сохранении настроек: {ex}")
+            self.message_label.insert(tk.END, f"{self.set_static_content('save_load_error_message')}: {ex}")
         else:
             self.button_change.place_forget()
             self.update_combobox()
@@ -146,7 +155,7 @@ class CRMStarterApp:
         except FileNotFoundError:
             self.existing_settings = {"applications": []}
         except Exception as ex:
-            self.message_label.insert(tk.END, f"Произошла ошибка при загрузке настроек: {ex}")
+            self.message_label.insert(tk.END, f"{self.set_static_content('load_error_message')}: {ex}")
             return
 
         # Проверьте, существует ли настройка с таким же 'folder'
@@ -179,9 +188,9 @@ class CRMStarterApp:
         try:
             with open('settings.json', 'w') as settings_file:
                 json.dump(self.existing_settings, settings_file, indent=4)
-            messagebox.showinfo("Информация", "Настройки успешно сохранены.")
+            messagebox.showinfo("Информация", self.set_static_content('success_message'))
         except Exception as ex:
-            self.message_label.insert(tk.END, f"Произошла ошибка при сохранении настроек: {ex}")
+            self.message_label.insert(tk.END, f"{self.set_static_content('save_load_error_message')}: {ex}")
         else:
             self.update_combobox()
 
@@ -202,7 +211,7 @@ class CRMStarterApp:
             self.existing_settings = {"applications": []}
         except Exception as ex:
             self.message_label.delete('1.0', tk.END)
-            self.message_label.insert(tk.END, f"Произошла ошибка при загрузке настроек: {ex}")
+            self.message_label.insert(tk.END, f"{self.set_static_content('load_error_message')}: {ex}")
             return
 
         # Проверьте, существует ли настройка с таким же 'folder'
@@ -218,15 +227,16 @@ class CRMStarterApp:
                 with open('settings.json', 'w') as settings_file:
                     json.dump(self.existing_settings, settings_file, indent=4)
                 self.message_label.delete('1.0', tk.END)
-                self.message_label.insert(tk.END, f"Настройка '{path_to_delete}' успешно удалена.")
+                self.message_label.insert(tk.END,
+                                          f"{self.set_static_content('entry_was_successfully_deleted')}. ['{path_to_delete}']")
             except Exception as ex:
                 self.message_label.delete('1.0', tk.END)
-                self.message_label.insert(tk.END, f"Произошла ошибка при сохранении настроек: {ex}")
+                self.message_label.insert(tk.END, f"{self.set_static_content('save_load_error_message')}: {ex}")
             finally:
                 self.update_combobox()
         else:
             self.message_label.delete('1.0', tk.END)
-            self.message_label.insert(tk.END, f"Настройка '{path_to_delete}' не найдена.")
+            self.message_label.insert(tk.END, f"{self.set_static_content('not_found')} ['{path_to_delete}']")
 
     def get_folder_path_and_dll(self, path_to_delete):
         selected_folder = self.combobox1.get()
@@ -240,13 +250,8 @@ class CRMStarterApp:
         return path_to_delete
 
     def update_combobox(self, is_fields_cleared=True):
-        # Получите список значений для Combobox
         combobox_values = [app['folder'] for app in self.applications]
-
-        # Удалите текущее значение Combobox
         self.combobox1.set("")
-
-        # Установите новый список значений для Combobox
         self.combobox1['values'] = combobox_values
 
         if is_fields_cleared:
@@ -271,7 +276,7 @@ class CRMStarterApp:
         except FileNotFoundError:
             self.applications = []
         except Exception as ex:
-            self.message_label.insert(tk.END, f"Произошла ошибка при загрузке настроек: {ex}")
+            self.message_label.insert(tk.END, f"{self.set_static_content('load_error_message')}: {ex}")
             return
 
         # Обновление данных self.combobox1
@@ -349,7 +354,7 @@ class CRMStarterApp:
                         process_thread_run.start()
                         subprocess.Popen(["powershell", "-noexit"], startupinfo=startupinfo)
         except Exception as e:
-            Log.info(f"Ошибка при запуске процесса: {e}", "Exception")
+            Log.info(f"{self.set_static_content('run_command_error_message')}: {e}", "Exception")
         finally:
             os.chdir(current_directory)
 
@@ -367,10 +372,11 @@ class CRMStarterApp:
             global pids
             pids = [(pid, folder_path, alias) for pid, folder_path, alias in pids if pid not in selected_pids]
 
-            self.message_label.insert(tk.END, f"Завершены процессы с PID: {selected_pids}")
+            self.message_label.insert(tk.END,
+                                      f"{self.set_static_content('entry_was_successfully_deleted')}: {selected_pids}")
             window.destroy()
         except Exception as ex:
-            self.message_label.insert(tk.END, f"Произошла ошибка: {ex}")
+            self.message_label.insert(tk.END, f"{self.set_static_content('error_message')}: {ex}")
 
     @basis_handle_errors("close_tab_by_name")
     def close_tab_by_name(self, alias):
@@ -388,7 +394,7 @@ class CRMStarterApp:
             if index is not None:
                 self.notebook.forget(index)
         except Exception as ex:
-            Log.info(f"Ошибка при закрытии вкладки: {ex}", "Exception")
+            Log.info(f"{self.set_static_content('error_closing_tab_message')}: {ex}", "Exception")
             pass  # Обработка ошибки, если вкладка не найдена
 
     def is_tab_open(self, alias):
@@ -396,17 +402,18 @@ class CRMStarterApp:
             tab_names = [self.notebook.tab(i, "text") for i in range(self.notebook.index("end"))]
             return alias in tab_names
         except Exception as ex:
-            Log.info(f"Ошибка при проверке вкладки: {ex}", "Exception")
+            Log.info(f"{self.set_static_content('error_check_tab_message')}: {ex}", "Exception")
             return False
 
     @basis_handle_errors("stop_command")
     def stop_command(self):
         if not pids:
-            messagebox.showinfo("Нет активных процессов", "Нет запущенных процессов для завершения.")
+            messagebox.showinfo(f"{self.set_static_content('error_stop_process_message_title')}",
+                                f"{self.set_static_content('error_start_process_message')}")
             return
 
         window = tk.Toplevel(self.root)
-        window.title("Выберите процессы для завершения")
+        window.title(f"{self.set_static_content('select_process_message')}")
         window.iconbitmap('icons/icon.ico')
         window.minsize(600, 400)
         window.maxsize(600, 400)

@@ -60,7 +60,7 @@ def list_include() -> object:
     return [
         ("auth.json", "auth.json"),
         ("version.txt", "version.txt"),
-        # ("settings.json", "settings.json"),
+        ("static_data.json", "static_data.json"),
         ("icons", "icons"),
     ]
 

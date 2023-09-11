@@ -1,0 +1,16 @@
+{
+  "file_not_exists_message": "Файл settings.json не найден.",
+  "load_error_message": "Произошла ошибка при загрузке данных",
+  "success_message": "Данные успешно загружены.",
+  "save_error_message": "Произошла ошибка при сохранении данных",
+  "entry_was_successfully_deleted": "Запись успешно удалена.",
+  "not_found": "Настройка не найдена.",
+  "process_start_error_message": "Произошла ошибка при запуске процесса",
+  "finish_process_success_message": "Завершены процессы с PID",
+  "error_message": "Произошла ошибка",
+  "error_closing_tab_message": "Ошибка при закрытии вкладки",
+  "error_check_tab_message": "Ошибка при проверке вкладки",
+  "error_start_process_message": "Нет запущенных процессов для завершения",
+  "error_stop_process_message_title": "Нет активных процессов",
+  "select_process_message": "Выберите процессы для завершения"
+}

@@ -245,13 +245,12 @@ class CRMStarterApp:
 
     @basis_handle_errors("change_data")
     def change_settings(self):
-        alias_value = self.alias_frame_1.get()
-        path_value = self.path_frame_1.get()
-        bd_value = self.bd_frame_1.get()
-        app_port_value = int(self.app_port_frame_1.get())
-        redis_port_value = int(self.redis_port_frame_1.get())
-        pg_port_value = int(self.pg_port_frame_1.get())
-        dll_value = self.dll_frame_1.get()
+        global path_delete
+
+        alias_value, path_value, bd_value, app_port_value, redis_port_value, pg_port_value, dll_value = self.get_frame_values(
+            self.alias_frame_1, self.path_frame_1, self.bd_frame_1, self.app_port_frame_1, self.redis_port_frame_1,
+            self.pg_port_frame_1, self.dll_frame_1
+        )
 
         try:
             with open('settings.json', 'r') as settings_file:
@@ -262,27 +261,23 @@ class CRMStarterApp:
             self.handle_error_message(f"{self.set_static_content('load_error_message')}: {ex}")
             return
 
+        self.delete_settings(path_delete)
+
         existing_app = self.find_existing_app(existing_settings, path_value)
+        new_app_data = {
+            "alias": alias_value,
+            "folder": path_value,
+            "port": app_port_value,
+            "db": bd_value,
+            "redis": redis_port_value,
+            "postgresql_port": pg_port_value,
+            "dll": dll_value,
+        }
+
         if existing_app:
-            existing_app.update({
-                "alias": alias_value,
-                "folder": path_value,
-                "port": app_port_value,
-                "db": bd_value,
-                "redis": redis_port_value,
-                "postgresql_port": pg_port_value,
-                "dll": dll_value,
-            })
+            existing_app.update(new_app_data)
         else:
-            existing_settings['applications'].append({
-                "alias": alias_value,
-                "folder": path_value,
-                "port": app_port_value,
-                "db": bd_value,
-                "redis": redis_port_value,
-                "postgresql_port": pg_port_value,
-                "dll": dll_value,
-            })
+            existing_settings['applications'].append(new_app_data)
 
         try:
             with open('settings.json', 'w') as settings_file:
@@ -296,53 +291,45 @@ class CRMStarterApp:
 
     @basis_handle_errors("save_settings")
     def save_settings(self):
-        alias = self.alias_frame_2.get()
-        path = self.path_frame_2.get()
-        bd = self.bd_frame_2.get()
-        app_port = int(self.app_port_frame_2.get())
-        redis = int(self.redis_port_frame_2.get())
-        port_pg = int(self.pg_port_frame_2.get())
-        dll = self.dll_frame_2.get()
+        alias_value, path_value, bd_value, app_port_value, redis_port_value, pg_port_value, dll_value = self.get_frame_values(
+            self.alias_frame_2, self.path_frame_2, self.bd_frame_2, self.app_port_frame_2, self.redis_port_frame_2,
+            self.pg_port_frame_2, self.dll_frame_2
+        )
 
         try:
             with open('settings.json', 'r') as settings_file:
-                self.existing_settings = json.load(settings_file)
+                existing_settings = json.load(settings_file)
         except FileNotFoundError:
-            self.existing_settings = {"applications": []}
+            existing_settings = {"applications": []}
         except Exception as ex:
             self.handle_error_message(f"{self.set_static_content('load_error_message')}: {ex}")
             return
 
-        existing_app = self.is_exist_setting(path)
+        existing_app = self.is_exist_setting(path_value)
+        new_app_data = {
+            "alias": alias_value,
+            "folder": path_value,
+            "port": app_port_value,
+            "db": bd_value,
+            "redis": redis_port_value,
+            "postgresql_port": pg_port_value,
+            "dll": dll_value,
+        }
+
         if existing_app:
-            existing_app.update({
-                "alias": alias,
-                "folder": path,
-                "port": app_port,
-                "db": bd,
-                "redis": redis,
-                "postgresql_port": port_pg,
-                "dll": dll,
-            })
+            existing_app.update(new_app_data)
         else:
-            self.existing_settings['applications'].append({
-                "alias": alias,
-                "folder": path,
-                "port": app_port,
-                "db": bd,
-                "redis": redis,
-                "postgresql_port": port_pg,
-                "dll": dll,
-            })
+            existing_settings['applications'].append(new_app_data)
 
         try:
             with open('settings.json', 'w') as settings_file:
-                json.dump(self.existing_settings, settings_file, indent=4)
+                json.dump(existing_settings, settings_file, indent=4)
             messagebox.showinfo("Информация", self.set_static_content('success_message_save'))
         except Exception as ex:
             self.handle_error_message(f"{self.set_static_content('save_load_error_message')}: {ex}")
         else:
             self.update_combobox()
+            self.clear_fields()
 
     def delete_settings(self, delete_path=None):
         path_to_delete = None
@@ -378,6 +365,15 @@ class CRMStarterApp:
         else:
             self.message_label.delete('1.0', tk.END)
             self.message_label.insert(tk.END, f"{self.set_static_content('not_found')} ['{path_to_delete}']")
+
+    def clear_fields(self):
+        self.alias_frame_2.delete(0, tk.END)
+        self.path_frame_2.delete(0, tk.END)
+        self.bd_frame_2.delete(0, tk.END)
+        self.app_port_frame_2.delete(0, tk.END)
+        self.redis_port_frame_2.delete(0, tk.END)
+        self.pg_port_frame_2.delete(0, tk.END)
+        self.dll_frame_2.delete(0, tk.END)
 
     def update_combobox(self, is_fields_cleared=True):
         combobox_values = [app['folder'] for app in self.applications]
@@ -626,3 +622,16 @@ class CRMStarterApp:
     @staticmethod
     def set_static_content(content):
         return static_content[content]
+
+    @staticmethod
+    def get_frame_values(alias_frame, path_frame, bd_frame, app_port_frame, redis_port_frame, pg_port_frame,
+                         dll_frame):
+        alias_value = alias_frame.get()
+        path_value = path_frame.get()
+        bd_value = bd_frame.get()
+        app_port_value = int(app_port_frame.get())
+        redis_port_value = int(redis_port_frame.get())
+        pg_port_value = int(pg_port_frame.get())
+        dll_value = dll_frame.get()
+
+        return alias_value, path_value, bd_value, app_port_value, redis_port_value, pg_port_value, dll_value

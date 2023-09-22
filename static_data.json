@@ -14,5 +14,6 @@
   "error_check_tab_message": "Ошибка при проверке вкладки",
   "error_start_process_message": "Нет запущенных процессов для завершения",
   "error_stop_process_message_title": "Нет активных процессов",
-  "select_process_message": "Выберите процессы для завершения"
+  "select_process_message": "Выберите процессы для завершения",
+  "process_killed_message": "Процесс был уничтожен BPMSoft-ом"
 }

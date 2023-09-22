@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import threading
+import time
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -461,11 +462,18 @@ class CRMStarterApp:
 
                         def run_process():
                             global process, pids
-                            command = f"dotnet {dll_path}"
+                            if dll_path == "BPMSoft.WebHost.dll":
+                                command = f"{os.path.join(folder_path, 'BPMSoft.WebHost.exe')}"
+                            else:
+                                command = f"dotnet {dll_path}"
 
                             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                                        text=True, startupinfo=startupinfo)
                             pids.append((process.pid, folder_path, alias))
+
+                            monitor_thread = threading.Thread(target=self.monitor_processes_and_close_tabs)
+                            monitor_thread.daemon = True
+                            monitor_thread.start()
 
                             while True:
                                 output_line = process.stdout.readline()
@@ -479,18 +487,68 @@ class CRMStarterApp:
                         process_thread_run = threading.Thread(target=run_process)
                         process_thread_run.start()
                         subprocess.Popen(["powershell", "-noexit"], startupinfo=startupinfo)
+
         except Exception as e:
             Log.info(f"{self.set_static_content('run_command_error_message')}: {e}", "Exception")
         finally:
             os.chdir(current_directory)
 
+    @staticmethod
+    @basis_handle_errors("is_process_alive")
+    def is_process_alive(pid):
+        return psutil.pid_exists(pid)
+
+    @staticmethod
+    def find_last_dotnet_process():
+        command = 'tasklist /FI "IMAGENAME eq dotnet.exe" /NH /FO CSV'
+        output = subprocess.check_output(command, shell=True).decode('cp1251')
+
+        dotnet_processes = []
+        for line in output.splitlines():
+            columns = line.split(',')
+            if len(columns) >= 2:
+                pid = int(columns[1].strip(' "'))
+                dotnet_processes.append(pid)
+
+        if len(dotnet_processes) > 0:
+            last_dotnet_pid = max(dotnet_processes)
+            return last_dotnet_pid
+        else:
+            return None
+
+    @basis_handle_errors("monitor_processes_and_close_tabs")
+    def monitor_processes_and_close_tabs(self):
+        while True:
+            for pid, folder_path, alias in pids:
+                if not self.is_process_alive(pid):
+                    self.message_label.insert(tk.END, f"{self.set_static_content('process_killed_message')}: {pid}")
+                    time.sleep(5)
+                    last_dotnet_pid = self.find_last_dotnet_process()
+                    if last_dotnet_pid and self.is_process_alive(last_dotnet_pid):
+                        pid_exists = any(existing_pid == last_dotnet_pid for existing_pid, _, _ in pids)
+                        if not pid_exists:
+                            alias_exists = any(existing_alias == alias for _, _, existing_alias in pids)
+                            if alias_exists:
+                                index = next((index for index, (_, _, existing_alias) in enumerate(pids) if
+                                              existing_alias == alias), None)
+                                if index is not None:
+                                    pids[index] = (last_dotnet_pid, folder_path, alias)
+                    else:
+                        self.close_tab_by_name(alias)
+                        pids.remove((pid, folder_path, alias))
+
+            time.sleep(5)
+
     @basis_handle_errors("on_ok")
     def on_ok(self, window, boxes):
+        alias = None
         try:
             selected_pids = [pid for pid, var_box, folder_path, alias in boxes if var_box.get() == 1]
 
-            for pid_proc_run, _, _, alias in [(pid, var_box, folder_path, alias) for pid, var_box, folder_path, alias in
-                                              boxes if var_box.get() == 1]:
+            for pid_proc_run, _, _, a in [(pid, var_box, folder_path, alias) for pid, var_box, folder_path, alias in
+                                          boxes if var_box.get() == 1]:
+                alias = a
+
                 child_process = psutil.Process(pid_proc_run)
                 child_process.terminate()
                 self.close_tab_by_name(alias)
@@ -503,12 +561,13 @@ class CRMStarterApp:
             window.destroy()
         except Exception as ex:
             self.message_label.insert(tk.END, f"{self.set_static_content('error_message')}: {ex}")
+            self.close_tab_by_name(alias)
+            window.destroy()
 
     @basis_handle_errors("close_tab_by_name")
     def close_tab_by_name(self, alias):
         try:
             fixed_tab_alias = alias
-            Log.info(f"Закрываем вкладку: {fixed_tab_alias}", "close_tab_by_name")
 
             index = None
             tab_names = [self.notebook.tab(i, "text") for i in range(self.notebook.index("end"))]
@@ -521,7 +580,7 @@ class CRMStarterApp:
                 self.notebook.forget(index)
         except Exception as ex:
             Log.info(f"{self.set_static_content('error_closing_tab_message')}: {ex}", "Exception")
-            pass  # Обработка ошибки, если вкладка не найдена
+            pass
 
     @basis_handle_errors("stop_command")
     def stop_command(self):

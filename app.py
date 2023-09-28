@@ -79,7 +79,7 @@ class App(ctk.CTk):
         self.style = ttk.Style()
         self.root.geometry("800x300+0+0")
         self.root.iconbitmap('icons/icon.ico')
-        self.root.title("CRM Starter")
+        self.root.title(f"CRM Starter v{version_app}")
         self.load_static_content()
         self.create_gui()
         self.load_settings()

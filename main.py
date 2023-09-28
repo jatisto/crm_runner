@@ -1,15 +1,14 @@
 import tkinter as ttk
 
 from CRMStarterApp import CRMStarterApp
+from app import App
 from utility_function import basis_handle_errors
 
 
 @basis_handle_errors(text='PackageGeneratorApp')
 def main():
-    root = ttk.Tk()
-    CRMStarterApp(root)
-    root.iconbitmap('icons/icon.ico')
-    root.mainloop()
+    app = App()
+    app.mainloop()
 
 
 if __name__ == "__main__":

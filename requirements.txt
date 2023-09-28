@@ -1,2 +1,5 @@
 psutil~=5.9.5
 requests~=2.31.0
+customtkinter~=5.2.0
+CTkMessagebox~=2.5
+app~=0.0.1

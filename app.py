@@ -281,17 +281,28 @@ class App(ctk.CTk):
             b_theme = "dark-blue"
             self.save_to_settings_one_attribute("default_theme", b_theme)
             ctk.set_default_color_theme(b_theme)
-            self.restart_app()
+            self.message_restart()
         if entered_text.endswith("_blue"):
             b_theme = "blue"
             self.save_to_settings_one_attribute("default_theme", b_theme)
             ctk.set_default_color_theme(b_theme)
-            self.restart_app()
+            self.message_restart()
         if entered_text.endswith("_green"):
             g_theme = "green"
             self.save_to_settings_one_attribute("default_theme", g_theme)
             ctk.set_default_color_theme(g_theme)
+            self.message_restart()
+
+    def message_restart(self):
+        confirmation = CTkMessagebox(title="Информация",
+                                     message=f"Для того, что бы изменение вступили в силу, требуется перезагрузка.\n\n",
+                                     option_1="Перезагрузить", option_2="Нет", button_width=85, button_height=30,
+                                     font=font14)
+        response = confirmation.get()
+        if response == "Перезагрузить":
             self.restart_app()
+        else:
+            self.set_attribute_from_settings_data("default_theme", self.default_theme_entry)
 
     @basis_handle_errors("load_settings")
     def load_static_content(self):
@@ -366,7 +377,7 @@ class App(ctk.CTk):
             self.handle_error_message(f"{self.set_static_content('load_error_message')}: {ex}")
         else:
             self.delete_settings(path_delete, is_restart_app=False)
-            self.restart_app()
+            self.update_data()
 
     @basis_handle_errors("save_settings")
     def save_settings(self):
@@ -403,14 +414,9 @@ class App(ctk.CTk):
         try:
             with open('settings.json', 'w') as settings_file:
                 json.dump(existing_settings, settings_file, indent=4)
-            confirmation = CTkMessagebox(title="Информация", message=self.set_static_content('success_message_save'),
-                                         option_1="Перезапустить", option_2="Нет")
-            response = confirmation.get()
-            if response == "Перезапустить":
-                self.restart_app()
-            else:
-                self.clear_fields()
-                self.update_combobox()
+            CTkMessagebox(title="Информация", message=self.set_static_content('success_message_save'))
+            self.update_data()
+            self.clear_fields()
         except Exception as ex:
             self.handle_error_message(f"{self.set_static_content('save_load_error_message')}: {ex}")
 
@@ -442,9 +448,7 @@ class App(ctk.CTk):
                 self.message_label.delete('1.0', tk.END)
                 self.message_label.insert(tk.END, f"{self.set_static_content('load_error_message')}: {ex}")
             finally:
-                self.update_combobox()
-                if is_restart_app:
-                    self.restart_app()
+                self.update_data()
         else:
             self.message_label.delete('1.0', tk.END)
             self.message_label.insert(tk.END, f"{self.set_static_content('not_found')} ['{path_to_delete}']")
@@ -801,9 +805,18 @@ class App(ctk.CTk):
         subprocess.call([python, "main.py"])
 
     def change_appearance_mode_event(self, new_appearance_mode):
-        ctk.set_appearance_mode(new_appearance_mode)
-        self.save_to_settings_one_attribute("theme", new_appearance_mode)
-        self.restart_app()
+        confirmation = CTkMessagebox(title="Информация",
+                                     message=f"Для того, что бы изменение вступили в силу, требуется перезагрузка.\n\n",
+                                     option_1="Перезагрузить", option_2="Нет", button_width=85, button_height=30,
+                                     font=font14)
+        response = confirmation.get()
+        if response == "Перезагрузить":
+            ctk.set_appearance_mode(new_appearance_mode)
+            self.save_to_settings_one_attribute("theme", new_appearance_mode)
+            self.restart_app()
+        else:
+            ctk.set_appearance_mode(new_appearance_mode)
+            self.save_to_settings_one_attribute("theme", new_appearance_mode)
 
     @staticmethod
     def loading_file():
@@ -848,3 +861,22 @@ class App(ctk.CTk):
 
         with open("settings.json", "w") as file:
             json.dump(data, file, indent=4)
+
+    @staticmethod
+    def set_attribute_from_settings_data(name_attribute, value):
+        with open("settings.json", "r") as file:
+            data = json.load(file)
+
+        value.delete(0, tk.END)
+        value.insert(0, (data[name_attribute]))
+
+    def update_data(self):
+        with open("settings.json", "r") as file:
+            data = json.load(file)
+            self.applications = []
+            self.applications.extend(data.get('applications', []))
+            self.combobox1.set("")
+            self.combobox1.configure(values=[app['folder'] for app in self.applications])
+            self.update_fields_data()
+            self.update_idletasks()
+            self.update()

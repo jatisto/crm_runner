@@ -8,9 +8,12 @@ import time
 import tkinter as tk
 import webbrowser
 from tkinter import ttk, messagebox
+
+import redis
 from CTkMessagebox import CTkMessagebox
 import customtkinter as ctk
 import psutil
+from PIL import Image
 
 from utility_function import basis_handle_errors, Log
 from update_version import Updater
@@ -42,6 +45,10 @@ class App(ctk.CTk):
         self.theme.set("system")
         self.default_theme = tk.StringVar()
         self.default_theme.set("dark-blue")
+        self.redis_host_theme = tk.StringVar()
+        self.redis_host_theme.set("127.0.0.1")
+        self.redis_port_theme = tk.StringVar()
+        self.redis_port_theme.set("6379")
         self.download_link_btn = None
         self.button_stop = None
         self.button_start = None
@@ -162,27 +169,37 @@ class App(ctk.CTk):
 
         self.button_delete.grid(row=0, column=1, padx=(15, 15), pady=(15, 15), sticky="nsew")
         # --------------------------------------------------------------------------------------------------------------
-        self.alias_frame_1 = ctk.CTkEntry(left_frame_entry, width=300, height=30, font=font12, border_width=1)
+        self.alias_frame_1 = ctk.CTkEntry(left_frame_entry, width=260, height=30, font=font12, border_width=1)
         self.alias_frame_1.grid(row=0, column=1, padx=(15, 15), pady=(15, 5), sticky="nsew")
 
-        self.path_frame_1 = ctk.CTkEntry(left_frame_entry, width=300, height=30, font=font12, border_width=1)
+        self.path_frame_1 = ctk.CTkEntry(left_frame_entry, width=260, height=30, font=font12, border_width=1)
         self.path_frame_1.grid(row=1, column=1, padx=(15, 15), pady=(15, 5), sticky="nsew")
         self.path_frame_1.bind("<FocusIn>", self.on_entry_focus_in)
         self.path_frame_1.bind("<FocusOut>", self.on_entry_focus_out)
 
-        self.bd_frame_1 = ctk.CTkEntry(left_frame_entry, width=300, height=30, font=font12, border_width=1)
+        self.bd_frame_1 = ctk.CTkEntry(left_frame_entry, width=260, height=30, font=font12, border_width=1)
         self.bd_frame_1.grid(row=2, column=1, padx=(15, 15), pady=(15, 5), sticky="nsew")
 
-        self.app_port_frame_1 = ctk.CTkEntry(left_frame_entry, width=300, height=30, font=font12, border_width=1)
+        self.app_port_frame_1 = ctk.CTkEntry(left_frame_entry, width=260, height=30, font=font12, border_width=1)
         self.app_port_frame_1.grid(row=3, column=1, padx=(15, 15), pady=(15, 5), sticky="nsew")
-
-        self.redis_port_frame_1 = ctk.CTkEntry(left_frame_entry, width=300, height=30, font=font12, border_width=1)
+        # --------------------------------------------------------------------------------------------------------------
+        self.redis_port_frame_1 = ctk.CTkEntry(left_frame_entry, width=260, height=30, font=font12, border_width=1)
         self.redis_port_frame_1.grid(row=4, column=1, padx=(15, 15), pady=(15, 5), sticky="nsew")
 
-        self.pg_port_frame_1 = ctk.CTkEntry(left_frame_entry, width=300, height=30, font=font12, border_width=1)
+        img = ctk.CTkImage(light_image=Image.open("icons/clean.ico"),
+                           dark_image=Image.open("icons/clean.ico"),
+                           size=(30, 30))
+
+        self.button_change = ctk.CTkButton(left_frame_entry, image=img, text="", bg_color="transparent",
+                                           width=5, height=5, corner_radius=0, border_width=0,
+                                           border_spacing=0,
+                                           command=self.redis_clear)
+        self.button_change.grid(row=4, column=2, rowspan=1, padx=(0, 0), pady=(10, 0), sticky="nsew")
+        # --------------------------------------------------------------------------------------------------------------
+        self.pg_port_frame_1 = ctk.CTkEntry(left_frame_entry, width=260, height=30, font=font12, border_width=1)
         self.pg_port_frame_1.grid(row=5, column=1, padx=(15, 15), pady=(15, 5), sticky="nsew")
 
-        self.dll_frame_1 = ctk.CTkEntry(left_frame_entry, width=300, height=30, font=font12, border_width=1)
+        self.dll_frame_1 = ctk.CTkEntry(left_frame_entry, width=260, height=30, font=font12, border_width=1)
         self.dll_frame_1.grid(row=6, column=1, padx=(15, 15), pady=(15, 5), sticky="nsew")
 
         label1 = ctk.CTkLabel(left_frame_entry, text="Aлиас:", anchor="w", font=font12)
@@ -264,33 +281,49 @@ class App(ctk.CTk):
                                 command=self.save_settings)
         button2.grid(row=7, column=1, padx=(15, 15), pady=(15, 5), sticky="nsew")
         # --------------------------------------------------------------------------------------------------------------
-        self.default_theme_entry = ctk.CTkEntry(theme_frame, font=font14, textvariable=self.default_theme)
-        self.default_theme_entry.grid(row=0, column=0, padx=(15, 15), pady=(315, 5), sticky="nsew")
+        redis_frame_settings = ctk.CTkFrame(theme_frame, corner_radius=5, fg_color="transparent")
+        redis_frame_settings.grid(row=0, column=0, padx=(15, 15), pady=(115, 15), sticky="nsew")
+        # --------------------------------------------------------------------------------------------------------------
+        redis_host_label1 = ctk.CTkLabel(redis_frame_settings, text="Host redis:", anchor="e", font=font14)
+        redis_host_label1.grid(row=0, column=0, padx=(0, 15), pady=(0, 35), sticky="n")
+
+        redis_host_entry = ctk.CTkEntry(redis_frame_settings, font=font14, textvariable=self.redis_host_theme)
+        redis_host_entry.grid(row=0, column=1, padx=(0, 15), pady=(0, 15), sticky="n")
+        # --------------------------------------------------------------------------------------------------------------
+        redis_port_label1 = ctk.CTkLabel(redis_frame_settings, text="Port redis:", anchor="e", font=font14)
+        redis_port_label1.grid(row=1, column=0, padx=(0, 15), pady=(0, 35), sticky="n")
+
+        redis_port_entry = ctk.CTkEntry(redis_frame_settings, font=font14, textvariable=self.redis_port_theme)
+        redis_port_entry.grid(row=1, column=1, padx=(0, 15), pady=(0, 0), sticky="n")
+        # --------------------------------------------------------------------------------------------------------------
+        button_redis = ctk.CTkButton(redis_frame_settings, text="Сохранить",
+                                     command=self.save_redis_settings)
+        button_redis.grid(row=2, column=1, padx=(0, 15), pady=(0, 15), sticky="nsew")
+        # --------------------------------------------------------------------------------------------------------------
+        default_theme_label1 = ctk.CTkLabel(redis_frame_settings, text="Цвет элементов:", anchor="e", font=font14)
+        default_theme_label1.grid(row=3, column=0, padx=(0, 15), pady=(0, 35), sticky="n")
+
+        self.default_theme_entry = ctk.CTkEntry(redis_frame_settings, font=font14, textvariable=self.default_theme)
+        self.default_theme_entry.grid(row=3, column=1, padx=(0, 15), pady=(0, 15), sticky="n")
         self.default_theme.trace_add("write", self.check_text)
-        self.appearance_mode_option_menu = ctk.CTkOptionMenu(master=theme_frame, width=145, button_color="#4b4b4b",
+        # --------------------------------------------------------------------------------------------------------------
+        theme_settings = ctk.CTkFrame(theme_frame, corner_radius=5, fg_color="transparent")
+        theme_settings.grid(row=1, column=0, padx=(15, 15), pady=(5, 15), sticky="nsew")
+        # --------------------------------------------------------------------------------------------------------------
+        self.appearance_mode_option_menu = ctk.CTkOptionMenu(master=theme_settings, width=145, button_color="#4b4b4b",
                                                              values=["Light", "Dark", "System"],
                                                              command=self.change_appearance_mode_event)
 
-        self.appearance_mode_option_menu.grid(row=1, column=0, padx=(140, 15), pady=(10, 15), sticky="nsew")
+        self.appearance_mode_option_menu.grid(row=0, column=0, padx=(130, 15), pady=(0, 15), sticky="w")
 
         self.appearance_mode_option_menu.set(self.theme.get())
 
     def check_text(self, *args):
         entered_text = self.default_theme.get()
-        if entered_text.endswith("_dark_blue"):
-            b_theme = "dark-blue"
+        if entered_text.endswith("_theme"):
+            b_theme = entered_text.replace("_theme", "")
             self.save_to_settings_one_attribute("default_theme", b_theme)
             ctk.set_default_color_theme(b_theme)
-            self.message_restart()
-        if entered_text.endswith("_blue"):
-            b_theme = "blue"
-            self.save_to_settings_one_attribute("default_theme", b_theme)
-            ctk.set_default_color_theme(b_theme)
-            self.message_restart()
-        if entered_text.endswith("_green"):
-            g_theme = "green"
-            self.save_to_settings_one_attribute("default_theme", g_theme)
-            ctk.set_default_color_theme(g_theme)
             self.message_restart()
 
     def message_restart(self):
@@ -323,6 +356,9 @@ class App(ctk.CTk):
                 settings_data = json.load(settings_file)
                 self.theme.set(settings_data.get('theme', "system"))
                 self.default_theme.set(settings_data.get('default_theme', "green"))
+
+                self.redis_host_theme.set(settings_data.get('redis_host', "127.0.0.1"))
+                self.redis_port_theme.set(settings_data.get('redis_port', "6379"))
 
                 self.applications.extend(settings_data.get('applications', []))
                 self.combobox1['values'] = [app['folder'] for app in self.applications]
@@ -376,7 +412,7 @@ class App(ctk.CTk):
         except Exception as ex:
             self.handle_error_message(f"{self.set_static_content('load_error_message')}: {ex}")
         else:
-            self.delete_settings(path_delete, is_restart_app=False)
+            self.delete_settings(path_delete)
             self.update_data()
 
     @basis_handle_errors("save_settings")
@@ -420,7 +456,7 @@ class App(ctk.CTk):
         except Exception as ex:
             self.handle_error_message(f"{self.set_static_content('save_load_error_message')}: {ex}")
 
-    def delete_settings(self, delete_path=None, is_restart_app=True):
+    def delete_settings(self, delete_path=None):
         path_to_delete = None
         path_to_delete = delete_path if delete_path else self.get_folder_path_and_dll(path_to_delete)
         self.existing_settings = {}
@@ -867,8 +903,11 @@ class App(ctk.CTk):
         with open("settings.json", "r") as file:
             data = json.load(file)
 
-        value.delete(0, tk.END)
-        value.insert(0, (data[name_attribute]))
+            if not isinstance(value, tk.StringVar):
+                value.delete(0, tk.END)
+                value.insert(0, (data[name_attribute]))
+            else:
+                value.set((data[name_attribute]))
 
     def update_data(self):
         with open("settings.json", "r") as file:
@@ -880,3 +919,26 @@ class App(ctk.CTk):
             self.update_fields_data()
             self.update_idletasks()
             self.update()
+
+    def redis_clear(self):
+        """
+        Выполняет чистка редиса
+        :return: None
+        """
+        redis_db = self.redis_port_frame_1.get()
+        r = redis.Redis(host=self.redis_host_theme.get(), port=int(self.redis_port_theme.get()), db=int(redis_db))
+
+        # Очистка Redis базы данных
+        r.flushdb()
+
+        # Проверка, что база данных очищена
+        keys = r.keys()
+        if len(keys) == 0:
+            CTkMessagebox(title="Успех", message=f"База данных редиса №{redis_db}, успешно очищена", font=font14)
+        else:
+            CTkMessagebox(title="Ошибка", message="Ошибка при очистке базы данных редиса...", font=font14)
+
+    def save_redis_settings(self):
+        self.save_to_settings_one_attribute('redis_host', self.redis_host_theme.get())
+        self.save_to_settings_one_attribute('redis_port', int(self.redis_port_theme.get()))
+        CTkMessagebox(title="Успех", message=f"Данные редиса успешно сохранены!", font=font14)

@@ -1,6 +1,3 @@
-import tkinter as ttk
-
-from CRMStarterApp import CRMStarterApp
 from app import App
 from utility_function import basis_handle_errors
 

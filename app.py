@@ -41,6 +41,7 @@ class App(ctk.CTk):
         self.scrollbar = None
         self.check_buttons_frame_inner = None
         self.tab_view = None
+        self.is_monitoring_stop = False
         self.theme = tk.StringVar()
         self.theme.set("system")
         self.default_theme = tk.StringVar()
@@ -669,7 +670,9 @@ class App(ctk.CTk):
         while True:
             for pid, folder_path, alias in pids:
                 if not self.is_process_alive(pid):
-                    self.message_label.insert(tk.END, f"{self.set_static_content('process_killed_message')}: {pid}")
+                    if not self.is_monitoring_stop:
+                        self.message_label.delete('1.0', tk.END)
+                        self.message_label.insert(tk.END, f"{self.set_static_content('process_stop_success_message')}: {pid}")
                     time.sleep(5)
                     last_dotnet_pid = self.find_last_dotnet_process()
                     if last_dotnet_pid and self.is_process_alive(last_dotnet_pid):
@@ -697,13 +700,12 @@ class App(ctk.CTk):
                                           boxes if var_box.get() == 1]:
                 alias = a
 
-                child_process = psutil.Process(pid_proc_run)
-                child_process.terminate()
-                self.close_tab_by_name(alias)
+                self.kill_process(alias, pid_proc_run)
 
             global pids
             pids = [(pid, folder_path, alias) for pid, folder_path, alias in pids if pid not in selected_pids]
 
+            self.message_label.delete('1.0', tk.END)
             self.message_label.insert(tk.END,
                                       f"{self.set_static_content('entry_was_successfully_deleted')}: {selected_pids}")
             window.destroy()
@@ -711,6 +713,11 @@ class App(ctk.CTk):
             self.message_label.insert(tk.END, f"{self.set_static_content('error_message')}: {ex}")
             self.close_tab_by_name(alias)
             window.destroy()
+
+    def kill_process(self, alias, pid_proc_run):
+        child_process = psutil.Process(pid_proc_run)
+        child_process.terminate()
+        self.close_tab_by_name(alias)
 
     @basis_handle_errors("close_tab_by_name")
     def close_tab_by_name(self, alias):
@@ -723,10 +730,23 @@ class App(ctk.CTk):
 
     @basis_handle_errors("stop_command")
     def stop_command(self):
+        global pids
         if not pids:
             CTkMessagebox(title=f"{self.set_static_content('error_stop_process_message_title')}",
                           message=f"{self.set_static_content('error_start_process_message')}")
             return
+
+        if len(pids) == 1:
+            self.kill_process(pids[0][2], pids[0][0])
+            self.message_label.delete('1.0', tk.END)
+            self.message_label.insert(tk.END,
+                                      f"{self.set_static_content('process_stop_success_message')}: {pids[0][0]}")
+            self.is_monitoring_stop = True
+
+            pids = []
+            return
+        else:
+            self.is_monitoring_stop = False
 
         window = ctk.CTkToplevel(self.root)
 

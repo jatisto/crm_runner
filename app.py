@@ -50,6 +50,8 @@ class App(ctk.CTk):
         self.redis_host_theme.set("127.0.0.1")
         self.redis_port_theme = tk.StringVar()
         self.redis_port_theme.set("6379")
+        self.host_app = tk.StringVar()
+        self.host_app.set("localhost")
         self.download_link_btn = None
         self.button_stop = None
         self.button_start = None
@@ -141,34 +143,41 @@ class App(ctk.CTk):
         btn_frame = ctk.CTkFrame(base_btn_frame, corner_radius=0)
         btn_frame.grid(row=0, column=0, padx=(0, 0), pady=(0, 0), sticky="nsew")
 
-        self.button_stop = ctk.CTkButton(btn_frame, text="Остановить процесс(ы)", command=self.stop_command)
-        self.button_stop.grid(row=0, column=0, padx=(50, 0), pady=(15, 15), sticky="nsew")
+        self.button_stop = ctk.CTkButton(btn_frame,
+                                         width=150, height=30,
+                                         text="Остановить", command=self.stop_command)
+        self.button_stop.grid(row=0, column=0, columnspan=1, padx=(20, 15), pady=(0, 15), sticky="n")
 
         self.button_start = ctk.CTkButton(btn_frame, text="Стартанём!",
-                                          width=120, height=30,
+                                          width=160, height=30,
                                           command=self.run_command)
-        self.button_start.grid(row=0, column=1, padx=(15, 20), pady=(15, 15), sticky="nsew")
+        self.button_start.grid(row=0, column=1, columnspan=1, padx=(0, 0), pady=(0, 15), sticky="w")
 
+        self.button_stop = ctk.CTkButton(btn_frame,
+                                         width=325, height=30,
+                                         text="Открыть приложение в браузере",
+                                         command=self.start_app)
+        self.button_stop.grid(row=1, column=0, columnspan=2, padx=(20, 0), pady=(0, 15), sticky="nw")
         # --------------------------------------------------------------------------------------------------------------
         message_frame = ctk.CTkFrame(base_btn_frame, corner_radius=0)
         message_frame.grid(row=1, column=0, padx=(0, 0), pady=(0, 0), sticky="nsew")
 
-        self.message_label = ctk.CTkTextbox(message_frame, font=font14, width=330, height=210)
-        self.message_label.grid(row=1, column=0, rowspan=3, columnspan=2, padx=(15, 0), pady=(15, 15), sticky="nsew")
+        self.message_label = ctk.CTkTextbox(message_frame, font=font14, width=330, height=200)
+        self.message_label.grid(row=1, column=0, rowspan=3, columnspan=2, padx=(15, 0), pady=(5, 5), sticky="nsew")
         # --------------------------------------------------------------------------------------------------------------
         btn_frame_2 = ctk.CTkFrame(base_btn_frame, corner_radius=0)
         btn_frame_2.grid(row=2, column=0, padx=(0, 0), pady=(0, 0), sticky="nsew")
 
         self.button_change = ctk.CTkButton(btn_frame_2, text="Изменить данные",
-                                           width=120, height=30,
+                                           width=150, height=30,
                                            command=self.change_settings)
-        self.button_change.grid(row=0, column=0, padx=(70, 0), pady=(15, 15), sticky="nsew")
+        self.button_change.grid(row=0, column=0, columnspan=1, padx=(20, 0), pady=(15, 15), sticky="nsew")
 
         self.button_delete = ctk.CTkButton(btn_frame_2, text="Удалить настройку",
-                                           width=120, height=30,
+                                           width=160, height=30,
                                            command=self.delete_settings)
 
-        self.button_delete.grid(row=0, column=1, padx=(15, 15), pady=(15, 15), sticky="nsew")
+        self.button_delete.grid(row=0, column=1, columnspan=1, padx=(15, 15), pady=(15, 15), sticky="nsew")
         # --------------------------------------------------------------------------------------------------------------
         self.alias_frame_1 = ctk.CTkEntry(left_frame_entry, width=260, height=30, font=font12, border_width=1)
         self.alias_frame_1.grid(row=0, column=1, padx=(15, 15), pady=(15, 5), sticky="nsew")
@@ -283,23 +292,29 @@ class App(ctk.CTk):
         button2.grid(row=7, column=1, padx=(15, 15), pady=(15, 5), sticky="nsew")
         # --------------------------------------------------------------------------------------------------------------
         redis_frame_settings = ctk.CTkFrame(theme_frame, corner_radius=5, fg_color="transparent")
-        redis_frame_settings.grid(row=0, column=0, padx=(15, 15), pady=(115, 15), sticky="nsew")
+        redis_frame_settings.grid(row=0, column=0, padx=(15, 15), pady=(45, 15), sticky="nsew")
+        # --------------------------------------------------------------------------------------------------------------
+        host_app_label1 = ctk.CTkLabel(redis_frame_settings, text="Host app:", anchor="e", font=font14)
+        host_app_label1.grid(row=0, column=0, padx=(0, 15), pady=(0, 35), sticky="n")
+
+        host_app_entry = ctk.CTkEntry(redis_frame_settings, font=font14, textvariable=self.host_app)
+        host_app_entry.grid(row=0, column=1, padx=(0, 15), pady=(0, 15), sticky="n")
         # --------------------------------------------------------------------------------------------------------------
         redis_host_label1 = ctk.CTkLabel(redis_frame_settings, text="Host redis:", anchor="e", font=font14)
-        redis_host_label1.grid(row=0, column=0, padx=(0, 15), pady=(0, 35), sticky="n")
+        redis_host_label1.grid(row=1, column=0, padx=(0, 15), pady=(0, 35), sticky="n")
 
         redis_host_entry = ctk.CTkEntry(redis_frame_settings, font=font14, textvariable=self.redis_host_theme)
-        redis_host_entry.grid(row=0, column=1, padx=(0, 15), pady=(0, 15), sticky="n")
+        redis_host_entry.grid(row=1, column=1, padx=(0, 15), pady=(0, 15), sticky="n")
         # --------------------------------------------------------------------------------------------------------------
         redis_port_label1 = ctk.CTkLabel(redis_frame_settings, text="Port redis:", anchor="e", font=font14)
-        redis_port_label1.grid(row=1, column=0, padx=(0, 15), pady=(0, 35), sticky="n")
+        redis_port_label1.grid(row=2, column=0, padx=(0, 15), pady=(0, 35), sticky="n")
 
         redis_port_entry = ctk.CTkEntry(redis_frame_settings, font=font14, textvariable=self.redis_port_theme)
-        redis_port_entry.grid(row=1, column=1, padx=(0, 15), pady=(0, 0), sticky="n")
+        redis_port_entry.grid(row=2, column=1, padx=(0, 15), pady=(0, 0), sticky="n")
         # --------------------------------------------------------------------------------------------------------------
         button_redis = ctk.CTkButton(redis_frame_settings, text="Сохранить",
                                      command=self.save_redis_settings)
-        button_redis.grid(row=2, column=1, padx=(0, 15), pady=(0, 15), sticky="nsew")
+        button_redis.grid(row=2, column=1, padx=(0, 15), pady=(45, 30), sticky="nsew")
         # --------------------------------------------------------------------------------------------------------------
         default_theme_label1 = ctk.CTkLabel(redis_frame_settings, text="Цвет элементов:", anchor="e", font=font14)
         default_theme_label1.grid(row=3, column=0, padx=(0, 15), pady=(0, 35), sticky="n")
@@ -360,6 +375,7 @@ class App(ctk.CTk):
 
                 self.redis_host_theme.set(settings_data.get('redis_host', "127.0.0.1"))
                 self.redis_port_theme.set(settings_data.get('redis_port', "6379"))
+                self.host_app.set(settings_data.get('host_app', "localhost"))
 
                 self.applications.extend(settings_data.get('applications', []))
                 self.combobox1['values'] = [app['folder'] for app in self.applications]
@@ -968,4 +984,23 @@ class App(ctk.CTk):
     def save_redis_settings(self):
         self.save_to_settings_one_attribute('redis_host', self.redis_host_theme.get())
         self.save_to_settings_one_attribute('redis_port', int(self.redis_port_theme.get()))
+        self.save_to_settings_one_attribute('host_app', self.host_app.get())
         CTkMessagebox(title="Успех", message=f"Данные редиса успешно сохранены!", font=font14)
+
+    @basis_handle_errors("start_app")
+    def start_app(self):
+        url = f'https://{self.host_app.get()}:{self.app_port_frame_1.get()}'
+
+        confirmation = CTkMessagebox(title="Запуск приложения",
+                                     message=f"Открыть страницу {url} в браузере?",
+                                     option_1="Открыть", option_2="Нет", option_3="Скопировать в буфер",
+                                     font=font14)
+        response = confirmation.get()
+
+        if response == "Открыть":
+            webbrowser.open(url, new=2, autoraise=True)
+        elif response == "Скопировать в буфер":
+            self.root.clipboard_clear()
+            self.root.clipboard_append(url)
+        elif response == "Нет":
+            return

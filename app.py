@@ -672,7 +672,8 @@ class App(ctk.CTk):
                 if not self.is_process_alive(pid):
                     if not self.is_monitoring_stop:
                         self.message_label.delete('1.0', tk.END)
-                        self.message_label.insert(tk.END, f"{self.set_static_content('process_stop_success_message')}: {pid}")
+                        self.message_label.insert(tk.END,
+                                                  f"{self.set_static_content('process_stop_success_message')}: {pid}")
                     time.sleep(5)
                     last_dotnet_pid = self.find_last_dotnet_process()
                     if last_dotnet_pid and self.is_process_alive(last_dotnet_pid):
@@ -737,16 +738,22 @@ class App(ctk.CTk):
             return
 
         if len(pids) == 1:
-            self.kill_process(pids[0][2], pids[0][0])
-            self.message_label.delete('1.0', tk.END)
-            self.message_label.insert(tk.END,
-                                      f"{self.set_static_content('process_stop_success_message')}: {pids[0][0]}")
-            self.is_monitoring_stop = True
+            confirmation = CTkMessagebox(title="Информация",
+                                         message=f"Процесс {pids[0][0]} [{pids[0][2]}] будет остановлен.\n\nВы уверены?\n\n",
+                                         option_1="Остановить", option_2="Отменить", button_width=85, button_height=30,
+                                         font=font14)
+            response = confirmation.get()
+            if response == "Остановить":
+                self.kill_process(pids[0][2], pids[0][0])
+                self.message_label.delete('1.0', tk.END)
+                self.message_label.insert(tk.END,
+                                          f"{self.set_static_content('process_stop_success_message')}: {pids[0][0]}")
+                self.is_monitoring_stop = True
 
-            pids = []
+                pids = []
             return
-        else:
-            self.is_monitoring_stop = False
+
+        self.is_monitoring_stop = False
 
         window = ctk.CTkToplevel(self.root)
 
